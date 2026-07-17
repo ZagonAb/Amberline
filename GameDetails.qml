@@ -20,6 +20,20 @@ Rectangle {
         "cabinetRight", "background", "video"
     ]
 
+    function getAvailableAssetTypes(g) {
+        if (!g || !g.assets) return []
+            var result = []
+            for (var i = 0; i < imageAssetTypes.length; ++i) {
+                var type = imageAssetTypes[i]
+                var assetUrl = g.assets[type]
+                if (assetUrl && assetUrl !== "") result.push(type)
+            }
+            return result
+    }
+
+    readonly property var availableAssetTypes: game ? getAvailableAssetTypes(game) : []
+    readonly property int currentDotIndex: availableAssetTypes.indexOf(currentAssetType)
+
     function collectionShortName(g) {
         if (!g || !g.collections || g.collections.count === 0) return ""
             var collection = g.collections.get(0)
@@ -158,6 +172,31 @@ Rectangle {
     border.width: Style.borderWidth
     border.color: Style.colorBorder
     clip: true
+
+    Row {
+        id: assetDotLine
+        anchors.top: root.top
+        anchors.topMargin: Style.spacingSmall
+        anchors.horizontalCenter: root.horizontalCenter
+        spacing: Style.spacingSmall
+        z: 5
+        visible: !!root.game && root.availableAssetTypes.length > 1
+
+        Repeater {
+            model: root.availableAssetTypes
+
+            delegate: Rectangle {
+                width: Math.round(14 * Style.scale)
+                height: Math.round(3 * Style.scale)
+                radius: height / 2
+                color: index === root.currentDotIndex ? Style.colorAccent : Style.colorBackground
+
+                Behavior on color {
+                    ColorAnimation { duration: Style.animationFast }
+                }
+            }
+        }
+    }
 
     Item {
         id: contentWrapper
