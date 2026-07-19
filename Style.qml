@@ -211,9 +211,25 @@ Item {
 
     property real scale: 1.0
 
-    function updateScale(windowHeight) {
-        if (windowHeight <= 0) return;
+    // Relación de aspecto real de la pantalla (width/height). Se usa para
+    // distinguir pantallas tipo 4:3 (~1.33) de 16:9 (~1.78) y ajustar
+    // ciertos perfiles de layout del grid según corresponda. El umbral
+    // 1.5 cae justo entre ambos valores.
+    property real screenAspectRatio: 16 / 9
+    readonly property real narrowScreenThreshold: 1.5
+    readonly property bool isNarrowScreen: screenAspectRatio <= narrowScreenThreshold
+
+    function updateScale(windowWidth, windowHeight) {
+        console.log("[Style][DEBUG] updateScale llamado t=" + Date.now() + " windowWidth=" + windowWidth + " windowHeight=" + windowHeight);
+        if (windowHeight <= 0) {
+            console.log("[Style][DEBUG] updateScale abortado, windowHeight<=0");
+            return;
+        }
         scale = Math.max(0.6, Math.min(1.9, windowHeight / 600));
+        if (windowWidth > 0) {
+            screenAspectRatio = windowWidth / windowHeight;
+        }
+        console.log("[Style][DEBUG] updateScale resultado t=" + Date.now() + " screenAspectRatio=" + screenAspectRatio.toFixed(4) + " isNarrowScreen=" + isNarrowScreen + " scale=" + scale.toFixed(3));
     }
 
     readonly property int spacingTiny: Math.round(2 * scale)
@@ -233,4 +249,28 @@ Item {
 
     readonly property int animationFast: 100
     readonly property int animationNormal: 180
+
+    readonly property var gridLayoutProfiles: ({
+        vertical: {
+            minCardWidth: Math.round(120 * scale),
+            heightRatio: 1.4,
+            targetColumns: 0
+        },
+        square: {
+            minCardWidth: Math.round(140 * scale),
+            heightRatio: 1.0,
+            targetColumns: 3
+        },
+        horizontal: {
+            minCardWidth: Math.round(130 * scale),
+            heightRatio: 0.75,
+            targetColumns: 3,
+            targetColumnsNarrow: 2
+        },
+        panoramic: {
+            minCardWidth: Math.round(160 * scale),
+            heightRatio: 0.45,
+            targetColumns: 2
+        }
+    })
 }

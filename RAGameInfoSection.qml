@@ -725,24 +725,12 @@ FocusScope {
                 width: parent.width
                 spacing: Style.spacingMedium
 
-                Item {
+                IconImage {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.round(40 * Style.scale); height: width
-
-                    Image {
-                        id: _errIcon
-                        anchors.fill: parent
-                        source: "assets/icons/ra.svg"
-                        fillMode: Image.PreserveAspectFit
-                        mipmap: true
-                        visible: false
-                    }
-                    ColorOverlay {
-                        anchors.fill: _errIcon
-                        source: _errIcon
-                        color: Style.colorIconMono
-                        opacity: 0.4
-                    }
+                    iconName: "ra"
+                    overlayColor: Qt.rgba(Style.colorIconMono.r, Style.colorIconMono.g, Style.colorIconMono.b, 0.4)
+                    width: Math.round(40 * Style.scale)
+                    height: width
                 }
 
                 Text {
@@ -808,28 +796,18 @@ FocusScope {
                 width: parent.width
                 spacing: Style.spacingMedium
 
-                Item {
+                IconImage {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.round(48 * Style.scale); height: width
+                    iconName: "ra"
+                    overlayColor: Style.colorIconMono
+                    width: Math.round(48 * Style.scale)
+                    height: width
 
-                    Image {
-                        id: _loadIconSrc
-                        anchors.fill: parent
-                        source: "assets/icons/ra.svg"
-                        fillMode: Image.PreserveAspectFit
-                        mipmap: true
-                        visible: false
-                    }
-                    ColorOverlay {
-                        anchors.fill: _loadIconSrc
-                        source: _loadIconSrc
-                        color: Style.colorIconMono
-                        SequentialAnimation on scale {
-                            running: _searching || _loading
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 1.2; duration: 400; easing.type: Easing.InOutQuad }
-                            NumberAnimation { to: 0.85; duration: 400; easing.type: Easing.InOutQuad }
-                        }
+                    SequentialAnimation on scale {
+                        running: _searching || _loading
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 1.2; duration: 400; easing.type: Easing.InOutQuad }
+                        NumberAnimation { to: 0.85; duration: 400; easing.type: Easing.InOutQuad }
                     }
                 }
 
@@ -854,24 +832,12 @@ FocusScope {
                 width: parent.width
                 spacing: Style.spacingSmall
 
-                Item {
+                IconImage {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.round(48 * Style.scale); height: width
-
-                    Image {
-                        id: _noAchIconSrc
-                        anchors.fill: parent
-                        source: "assets/icons/ra.svg"
-                        fillMode: Image.PreserveAspectFit
-                        mipmap: true
-                        visible: false
-                    }
-                    ColorOverlay {
-                        anchors.fill: _noAchIconSrc
-                        source: _noAchIconSrc
-                        color: Style.colorIconMono
-                        opacity: 0.35
-                    }
+                    iconName: "ra"
+                    overlayColor: Qt.rgba(Style.colorIconMono.r, Style.colorIconMono.g, Style.colorIconMono.b, 0.35)
+                    width: Math.round(48 * Style.scale)
+                    height: width
                 }
 
                 Text {

@@ -6,6 +6,11 @@ FocusScope {
 
     readonly property var currentGame: gameGrid.currentGame
     readonly property int currentCollectionIndex: collectionBar.currentIndex
+    readonly property alias collectionBar: collectionBar
+    readonly property alias gameGrid: gameGrid
+    readonly property bool restoreComplete: _restoreComplete
+    readonly property bool gridOrientationResolved: gameGrid.orientationResolved
+    property bool _restoreComplete: false
 
     function restoreCollectionIndex(index) { collectionBar.setCurrentIndex(index); }
     function focusGames() { gameGrid.focusGrid(); }
@@ -38,6 +43,7 @@ FocusScope {
             function applyGame() {
                 if (gameGrid.gameCount > 0) {
                     gameGrid.selectGameByTitle(data.title);
+                    root._restoreComplete = true;
                 } else {
                     Qt.callLater(applyGame);
                 }
@@ -45,6 +51,7 @@ FocusScope {
             applyGame();
         } else {
             console.warn("[GameView] No hay título de juego para restaurar");
+            root._restoreComplete = true;
         }
     }
 
@@ -216,7 +223,6 @@ FocusScope {
         id: colorSetting
         x: mainColumn.x
         y: mainColumn.y + barRow.height + Style.spacingMedium
-
         z: 10
 
         onCloseMenu: closeColorSetting()

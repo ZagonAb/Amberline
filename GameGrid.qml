@@ -45,12 +45,96 @@ FocusScope {
     }
 
     readonly property int cellSpacing: Style.spacingMedium
-    readonly property int minCardWidth: Math.round(120 * Style.scale)
     readonly property int gridMargin: Style.spacingSmall
     readonly property real availableGridWidth: width - gridMargin * 2
-    readonly property int columns: Math.max(1, Math.floor(availableGridWidth / (minCardWidth + cellSpacing)))
+    property string collectionOrientation: "vertical"
+    property var _orientationCache: ({})
+    property bool orientationResolved: false
+    readonly property var activeProfile: Style.gridLayoutProfiles[collectionOrientation] || Style.gridLayoutProfiles.vertical
+    readonly property int dynamicColumns: Math.max(1, Math.floor(availableGridWidth / (activeProfile.minCardWidth + cellSpacing)))
+    readonly property int effectiveTargetColumns: (Style.isNarrowScreen && activeProfile.targetColumnsNarrow !== undefined)
+        ? activeProfile.targetColumnsNarrow
+        : activeProfile.targetColumns
+    readonly property int columns: effectiveTargetColumns > 0
+        ? Math.max(1, Math.min(effectiveTargetColumns, dynamicColumns))
+        : dynamicColumns
+
     readonly property real cardWidth: (availableGridWidth / columns) - cellSpacing
-    readonly property real cardHeight: cardWidth * 1.4
+    readonly property real cardHeight: cardWidth * activeProfile.heightRatio
+
+    onColumnsChanged: console.log("[GameGrid][DEBUG] columns cambió a " + columns + " t=" + Date.now() + " orientationResolved=" + orientationResolved + " collectionOrientation=" + collectionOrientation + " gridView.count=" + gridView.count)
+    onCollectionOrientationChanged: console.log("[GameGrid][DEBUG] collectionOrientation cambió a " + collectionOrientation + " t=" + Date.now())
+    onOrientationResolvedChanged: console.log("[GameGrid][DEBUG] orientationResolved cambió a " + orientationResolved + " t=" + Date.now())
+    onCardWidthChanged: console.log("[GameGrid][DEBUG] cardWidth cambió a " + cardWidth.toFixed(1) + " t=" + Date.now())
+    onCardHeightChanged: console.log("[GameGrid][DEBUG] cardHeight cambió a " + cardHeight.toFixed(1) + " t=" + Date.now())
+
+    function orientationCacheKey(entry) {
+        if (!entry) return "none";
+        return entry.kind === "collection" ? ("col:" + entry.collectionIndex) : ("kind:" + entry.kind);
+    }
+
+    function gameAt(entry, index) {
+        if (!entry) return null;
+        var model = resolveModel(entry);
+        if (!model || model.count <= index) return null;
+        if (entry.kind === "collection") return model.get(index);
+        return api.allGames.get(model.mapToSource(index));
+    }
+
+    function applyModelForCurrentEntry() {
+        console.log("[GameGrid][DEBUG] applyModelForCurrentEntry t=" + Date.now() + " kind=" + (sourceEntry ? sourceEntry.kind : "null") + " orientation=" + collectionOrientation + " columns=" + columns);
+        gridView.model = resolveModel(sourceEntry);
+        gridView.currentIndex = 0;
+    }
+
+    function updateOrientation() {
+        var key = orientationCacheKey(sourceEntry);
+        console.log("[GameGrid][DEBUG] updateOrientation t=" + Date.now() + " key=" + key + " isNarrowScreen=" + Style.isNarrowScreen + " screenAspectRatio=" + Style.screenAspectRatio.toFixed(4));
+
+        if (root._orientationCache.hasOwnProperty(key)) {
+            root.collectionOrientation = root._orientationCache[key];
+            root.orientationResolved = true;
+            aspectProbe.source = "";
+            console.log("[GameGrid][DEBUG] updateOrientation HIT de cache t=" + Date.now() + " key=" + key + " orientation=" + root.collectionOrientation);
+            applyModelForCurrentEntry();
+            return;
+        }
+
+        root.orientationResolved = false;
+        var game = root.gameAt(sourceEntry, 0);
+        var src = game ? (game.assets.boxFront !== "" ? game.assets.boxFront : game.assets.cartridge) : "";
+        console.log("[GameGrid][DEBUG] updateOrientation MISS de cache t=" + Date.now() + " key=" + key + " game=" + (game ? game.title : "null") + " src=" + src);
+
+        if (src === "") {
+            root._orientationCache[key] = "vertical";
+            root.collectionOrientation = "vertical";
+            root.orientationResolved = true;
+            aspectProbe.source = "";
+            console.log("[GameGrid][DEBUG] updateOrientation sin src, fallback vertical t=" + Date.now());
+            applyModelForCurrentEntry();
+            return;
+        }
+
+        aspectProbe.pendingKey = key;
+        aspectProbe.source = src;
+        console.log("[GameGrid][DEBUG] updateOrientation disparando aspectProbe async t=" + Date.now() + " pendingKey=" + key);
+    }
+
+    AspectProbe {
+        id: aspectProbe
+        property string pendingKey: ""
+        onResolved: {
+            var currentKey = root.orientationCacheKey(root.sourceEntry);
+            console.log("[GameGrid][DEBUG] aspectProbe.onResolved t=" + Date.now() + " pendingKey=" + pendingKey + " orientation=" + orientation + " currentKey=" + currentKey + " seAplica=" + (currentKey === pendingKey));
+            root._orientationCache[pendingKey] = orientation;
+
+            if (currentKey === pendingKey) {
+                root.collectionOrientation = orientation;
+                root.orientationResolved = true;
+                root.applyModelForCurrentEntry();
+            }
+        }
+    }
 
     SortFilterProxyModel {
         id: favoritesModel
@@ -77,9 +161,9 @@ FocusScope {
     }
 
     onSourceEntryChanged: {
-        console.log("[GameGrid] sourceEntryChanged, kind:", sourceEntry ? sourceEntry.kind : "null");
-        gridView.model = resolveModel(sourceEntry);
-        gridView.currentIndex = 0;
+        console.log("[GameGrid][DEBUG] sourceEntryChanged t=" + Date.now() + " kind:", sourceEntry ? sourceEntry.kind : "null", " label:", sourceEntry ? sourceEntry.label : "null");
+        root.orientationResolved = false;
+        updateOrientation();
     }
 
     function toggleCurrentFavorite() {
@@ -118,6 +202,10 @@ FocusScope {
         onCurrentIndexChanged: {
             console.log("[GameGrid] currentIndex cambió a:", currentIndex);
         }
+        onModelChanged: console.log("[GameGrid][DEBUG] gridView.model cambió t=" + Date.now() + " count=" + count + " cellWidth=" + cellWidth.toFixed(1) + " cellHeight=" + cellHeight.toFixed(1))
+        onCountChanged: console.log("[GameGrid][DEBUG] gridView.count cambió a " + count + " t=" + Date.now() + " cellWidth=" + cellWidth.toFixed(1) + " cellHeight=" + cellHeight.toFixed(1))
+        onCellWidthChanged: console.log("[GameGrid][DEBUG] gridView.cellWidth cambió a " + cellWidth.toFixed(1) + " t=" + Date.now())
+        onCellHeightChanged: console.log("[GameGrid][DEBUG] gridView.cellHeight cambió a " + cellHeight.toFixed(1) + " t=" + Date.now())
     }
 
     Text {

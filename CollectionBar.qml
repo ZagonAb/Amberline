@@ -4,7 +4,7 @@ Item {
     id: root
 
     readonly property int currentIndex: listView.currentIndex
-    readonly property var currentEntry: listView.currentItem ? listView.currentItem.entryData : null
+    readonly property var currentEntry: getEntryAt(currentIndex)
     readonly property int itemWidth: Math.round(150 * Style.scale)
     readonly property int itemHeight: Math.round(34 * Style.scale)
 
@@ -59,10 +59,20 @@ Item {
         console.log("[CollectionBar] setCurrentByKindAndName: kind=" + kind + ", name=" + name);
         var idx = findEntryByKindAndName(kind, name);
         if (idx >= 0) {
+            var alreadyCurrent = (listView.currentIndex === idx);
+            console.log("[CollectionBar][DEBUG] antes de asignar currentIndex t=" + Date.now() + " idx=" + idx + " currentItem=" + listView.currentItem + " alreadyCurrent=" + alreadyCurrent);
             listView.currentIndex = idx;
+            console.log("[CollectionBar][DEBUG] después de asignar currentIndex t=" + Date.now() + " currentItem=" + listView.currentItem + " currentEntry=" + JSON.stringify(currentEntry));
             ensureCurrentVisible();
-            if (currentEntry) {
-                root.collectionSelected(currentEntry);
+            if (alreadyCurrent) {
+                if (currentEntry) {
+                    root.collectionSelected(currentEntry);
+                    console.log("[CollectionBar][DEBUG] collectionSelected EMITIDO manualmente (index sin cambios) t=" + Date.now());
+                } else {
+                    console.warn("[CollectionBar][DEBUG] collectionSelected NO emitido: currentEntry es null t=" + Date.now());
+                }
+            } else {
+                console.log("[CollectionBar][DEBUG] currentIndex cambió, onCurrentIndexChanged emite collectionSelected (sin duplicar) t=" + Date.now());
             }
         } else {
             console.warn("[CollectionBar] No se pudo establecer, usando índice 0");
@@ -102,8 +112,11 @@ Item {
 
         onCurrentIndexChanged: {
             console.log("[CollectionBar] currentIndex cambió a:", currentIndex);
-            if (currentItem) {
-                root.collectionSelected(currentItem.entryData);
+            var entry = root.getEntryAt(currentIndex);
+            if (entry) {
+                root.collectionSelected(entry);
+            } else {
+                console.warn("[CollectionBar][DEBUG] onCurrentIndexChanged: getEntryAt(" + currentIndex + ") devolvió null t=" + Date.now());
             }
             ensureCurrentVisible();
         }
@@ -123,15 +136,95 @@ Item {
                 z: -1
             }
 
-            Text {
+            Item {
+                id: marqueeContainer
                 anchors.centerIn: parent
                 width: parent.width - Style.spacingSmall * 2
-                text: model.label
-                color: delegateRoot.isCurrent ? Style.colorAccent : Style.colorTextPrimary
-                font.family: Fonts.pixelify
-                font.pixelSize: Style.fontSizeLarge
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
+                height: marqueeText1.height
+                clip: true
+
+                property bool isActive: delegateRoot.isCurrent
+                property bool needsScroll: marqueeText1.implicitWidth > marqueeContainer.width
+                property real scrollOffset: 0
+                property real cycleWidth: marqueeText1.implicitWidth + marqueeSep.implicitWidth
+                property color textColor: delegateRoot.isCurrent ? Style.colorAccent : Style.colorTextPrimary
+                property int scrollStartDelay: 1000
+
+                Text {
+                    id: marqueeText1
+                    text: model.label
+                    color: marqueeContainer.textColor
+                    font.family: Fonts.pixelify
+                    font.pixelSize: Style.fontSizeLarge
+                    elide: marqueeContainer.isActive ? Text.ElideNone : Text.ElideRight
+                    width: marqueeContainer.isActive ? implicitWidth : marqueeContainer.width
+                    horizontalAlignment: Text.AlignHCenter
+                    x: marqueeContainer.needsScroll ? -marqueeContainer.scrollOffset : (marqueeContainer.width - width) / 2
+                    y: 0
+                }
+
+                Text {
+                    id: marqueeSep
+                    text: "  •  "
+                    color: marqueeContainer.textColor
+                    font.family: Fonts.pixelify
+                    font.pixelSize: Style.fontSizeLarge
+                    elide: Text.ElideNone
+                    x: marqueeText1.implicitWidth - marqueeContainer.scrollOffset
+                    y: 0
+                    visible: marqueeContainer.needsScroll && marqueeContainer.isActive
+                }
+
+                Text {
+                    id: marqueeText2
+                    text: model.label
+                    color: marqueeContainer.textColor
+                    font.family: Fonts.pixelify
+                    font.pixelSize: Style.fontSizeLarge
+                    elide: Text.ElideNone
+                    x: marqueeText1.implicitWidth + marqueeSep.implicitWidth - marqueeContainer.scrollOffset
+                    y: 0
+                    visible: marqueeContainer.needsScroll && marqueeContainer.isActive
+                }
+
+                NumberAnimation {
+                    id: marqueeAnim
+                    target: marqueeContainer
+                    property: "scrollOffset"
+                    from: 0
+                    to: marqueeContainer.cycleWidth
+                    duration: marqueeContainer.cycleWidth * 22
+                    easing.type: Easing.Linear
+                    loops: Animation.Infinite
+                    running: false
+                }
+
+                Timer {
+                    id: marqueeStartDelay
+                    interval: marqueeContainer.scrollStartDelay
+                    repeat: false
+                    onTriggered: marqueeAnim.start()
+                }
+
+                onIsActiveChanged: {
+                    scrollOffset = 0;
+                    marqueeAnim.stop();
+                    marqueeStartDelay.stop();
+                    if (isActive && needsScroll) {
+                        marqueeStartDelay.restart();
+                    }
+                }
+
+                onNeedsScrollChanged: {
+                    marqueeStartDelay.stop();
+                    if (isActive && needsScroll) {
+                        scrollOffset = 0;
+                        marqueeStartDelay.restart();
+                    } else {
+                        marqueeAnim.stop();
+                        scrollOffset = 0;
+                    }
+                }
             }
         }
     }

@@ -7,7 +7,7 @@ Rectangle {
 
     color: "transparent"
     radius: Style.radiusPanel
-    border.width: isCurrent ? Style.borderWidth * 2 : Style.borderWidth
+    border.width: isCurrent ? Style.borderWidth * 3 : Style.borderWidth
     border.color: isCurrent ? Style.colorFocus : Style.colorBorder
     scale: isCurrent ? 1.04 : 1.0
 
