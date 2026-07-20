@@ -187,7 +187,7 @@ FocusScope {
 
             GameGrid {
                 id: gameGrid
-                width: parent.width * 0.62
+                width: parent.width * 0.62 - scrollProgressBar.width - parent.spacing
                 height: parent.height
                 blurActive: root.blurActive
 
@@ -205,6 +205,15 @@ FocusScope {
                 onCycleImageRequested: {
                     gameDetails.cycleAsset();
                 }
+            }
+
+            ScrollProgressBar {
+                id: scrollProgressBar
+                height: gameDetails.height
+                anchors.verticalCenter: parent.verticalCenter
+                currentIndex: gameGrid.currentGameIndex
+                count: gameGrid.gameCount
+                columns: gameGrid.columns
             }
 
             GameDetails {

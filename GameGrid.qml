@@ -7,17 +7,106 @@ FocusScope {
 
     property var sourceEntry: null
     readonly property var currentGame: gridView.count > 0 && gridView.currentItem
-        ? gridView.currentItem.game
-        : null
+    ? gridView.currentItem.game
+    : null
     readonly property int currentGameIndex: gridView.currentIndex
     readonly property int gameCount: gridView.count
 
     property bool blurActive: false
 
+    readonly property bool letterFilterEnabled: sourceEntry
+    && sourceEntry.kind !== "favorites"
+    && sourceEntry.kind !== "lastplayed"
+    property bool letterScrollActive: false
+    property string letterScrollLetter: ""
+    property int letterScrollCount: 0
+    property int letterHoldDirection: 1
+    property var letterIndex: ({})
+    property var letterOrder: []
+
     signal gameActivated(var game)
     signal cycleImageRequested()
 
     function focusGrid() { gridView.forceActiveFocus(); }
+
+    function buildLetterIndex() {
+        var index = {};
+        var order = [];
+        for (var i = 0; i < gridView.count; i++) {
+            var g = root.gameAt(root.sourceEntry, i);
+            if (!g || !g.title) continue;
+            var ch = g.title.trim().charAt(0).toUpperCase();
+            var isDigit = ch >= "0" && ch <= "9";
+            var isLetter = ch >= "A" && ch <= "Z";
+            if (!isDigit && !isLetter) continue;
+            if (!index[ch]) {
+                index[ch] = { count: 0, firstIndex: i };
+                order.push(ch);
+            }
+            index[ch].count++;
+        }
+        order.sort();
+        root.letterIndex = index;
+        root.letterOrder = order;
+    }
+
+    function jumpToLetter(letter) {
+        var entry = root.letterIndex[letter];
+        if (!entry) return;
+        gridView.currentIndex = entry.firstIndex;
+        gridView.positionViewAtIndex(entry.firstIndex, GridView.Center);
+    }
+
+    function activateLetterScroll() {
+        if (!root.letterFilterEnabled || gridView.count === 0) return;
+        root.buildLetterIndex();
+        if (root.letterOrder.length === 0) return;
+
+        var startLetter = "";
+        var current = root.gameAt(root.sourceEntry, gridView.currentIndex);
+        if (current && current.title) {
+            var ch = current.title.trim().charAt(0).toUpperCase();
+            if (root.letterIndex[ch]) startLetter = ch;
+        }
+        if (!startLetter) startLetter = root.letterOrder[0];
+
+        root.letterScrollLetter = startLetter;
+        root.letterScrollCount = root.letterIndex[startLetter].count;
+        root.letterScrollActive = true;
+        root.jumpToLetter(startLetter);
+        letterStepTimer.start();
+    }
+
+    function advanceLetterFilter() {
+        if (root.letterOrder.length === 0) return;
+        var idx = root.letterOrder.indexOf(root.letterScrollLetter);
+        if (idx === -1) idx = 0;
+        idx = (idx + root.letterHoldDirection + root.letterOrder.length) % root.letterOrder.length;
+        var letter = root.letterOrder[idx];
+        root.letterScrollLetter = letter;
+        root.letterScrollCount = root.letterIndex[letter].count;
+        root.jumpToLetter(letter);
+    }
+
+    function deactivateLetterScroll() {
+        root.letterScrollActive = false;
+        letterHoldTimer.stop();
+        letterStepTimer.stop();
+    }
+
+    Timer {
+        id: letterHoldTimer
+        interval: 500
+        repeat: false
+        onTriggered: root.activateLetterScroll()
+    }
+
+    Timer {
+        id: letterStepTimer
+        interval: 380
+        repeat: true
+        onTriggered: root.advanceLetterFilter()
+    }
 
     function selectGameByTitle(title) {
         console.log("[GameGrid] selectGameByTitle: buscando '" + title + "'");
@@ -53,11 +142,11 @@ FocusScope {
     readonly property var activeProfile: Style.gridLayoutProfiles[collectionOrientation] || Style.gridLayoutProfiles.vertical
     readonly property int dynamicColumns: Math.max(1, Math.floor(availableGridWidth / (activeProfile.minCardWidth + cellSpacing)))
     readonly property int effectiveTargetColumns: (Style.isNarrowScreen && activeProfile.targetColumnsNarrow !== undefined)
-        ? activeProfile.targetColumnsNarrow
-        : activeProfile.targetColumns
+    ? activeProfile.targetColumnsNarrow
+    : activeProfile.targetColumns
     readonly property int columns: effectiveTargetColumns > 0
-        ? Math.max(1, Math.min(effectiveTargetColumns, dynamicColumns))
-        : dynamicColumns
+    ? Math.max(1, Math.min(effectiveTargetColumns, dynamicColumns))
+    : dynamicColumns
 
     readonly property real cardWidth: (availableGridWidth / columns) - cellSpacing
     readonly property real cardHeight: cardWidth * activeProfile.heightRatio
@@ -163,6 +252,7 @@ FocusScope {
     onSourceEntryChanged: {
         console.log("[GameGrid][DEBUG] sourceEntryChanged t=" + Date.now() + " kind:", sourceEntry ? sourceEntry.kind : "null", " label:", sourceEntry ? sourceEntry.label : "null");
         root.orientationResolved = false;
+        if (root.letterScrollActive) root.deactivateLetterScroll();
         updateOrientation();
     }
 
@@ -196,13 +286,68 @@ FocusScope {
             height: cardHeight
             game: modelData
             isCurrent: GridView.isCurrentItem
-            blurActive: root.blurActive
+            blurActive: root.blurActive || root.letterScrollActive
+        }
+
+        Keys.onPressed: {
+            if (count === 0) return;
+            if (root.letterScrollActive && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
+                event.accepted = true;
+                return;
+            }
+
+            if ((event.key === Qt.Key_Down || event.key === Qt.Key_Up) && !event.isAutoRepeat && root.letterFilterEnabled) {
+                root.letterHoldDirection = (event.key === Qt.Key_Down) ? 1 : -1;
+                letterHoldTimer.restart();
+            }
+
+            if (event.key === Qt.Key_Left && currentIndex === 0) {
+                event.accepted = true;
+                currentIndex = count - 1;
+                return;
+            }
+
+            if (event.key === Qt.Key_Down) {
+                var lastRow = Math.floor((count - 1) / columns);
+                var currentRow = Math.floor(currentIndex / columns);
+                if (currentRow === lastRow) {
+                    event.accepted = true;
+                    currentIndex = 0;
+                    return;
+                }
+            }
+
+            if (event.key === Qt.Key_Right && currentIndex === count - 1) {
+                event.accepted = true;
+                currentIndex = 0;
+                return;
+            }
+        }
+
+        Keys.onReleased: {
+            if (event.isAutoRepeat) return;
+            if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                if (root.letterScrollActive) {
+                    root.deactivateLetterScroll();
+                } else {
+                    letterHoldTimer.stop();
+                }
+            }
         }
 
         onCurrentIndexChanged: {
             console.log("[GameGrid] currentIndex cambió a:", currentIndex);
         }
-        onModelChanged: console.log("[GameGrid][DEBUG] gridView.model cambió t=" + Date.now() + " count=" + count + " cellWidth=" + cellWidth.toFixed(1) + " cellHeight=" + cellHeight.toFixed(1))
+        onModelChanged: {
+            console.log("[GameGrid][DEBUG] gridView.model cambió t=" + Date.now() + " count=" + count + " cellWidth=" + cellWidth.toFixed(1) + " cellHeight=" + cellHeight.toFixed(1));
+            if (root.letterScrollActive) root.deactivateLetterScroll();
+            if (root.letterFilterEnabled) {
+                root.buildLetterIndex();
+            } else {
+                root.letterIndex = {};
+                root.letterOrder = [];
+            }
+        }
         onCountChanged: console.log("[GameGrid][DEBUG] gridView.count cambió a " + count + " t=" + Date.now() + " cellWidth=" + cellWidth.toFixed(1) + " cellHeight=" + cellHeight.toFixed(1))
         onCellWidthChanged: console.log("[GameGrid][DEBUG] gridView.cellWidth cambió a " + cellWidth.toFixed(1) + " t=" + Date.now())
         onCellHeightChanged: console.log("[GameGrid][DEBUG] gridView.cellHeight cambió a " + cellHeight.toFixed(1) + " t=" + Date.now())
@@ -220,6 +365,54 @@ FocusScope {
         font.pixelSize: Style.fontSizeTitle
         wrapMode: Text.WordWrap
         horizontalAlignment: Text.AlignHCenter
+    }
+
+    Item {
+        id: letterOverlay
+        anchors.centerIn: parent
+        width: overlayCard.width
+        height: overlayCard.height
+        z: 50
+        visible: root.letterFilterEnabled
+        opacity: root.letterScrollActive ? 1 : 0
+        scale: root.letterScrollActive ? 1 : 0.92
+
+        Behavior on opacity { NumberAnimation { duration: Style.animationFast; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: Style.animationFast; easing.type: Easing.OutCubic } }
+
+        Rectangle {
+            id: overlayCard
+            readonly property real baseSize: Math.min(gridView.width, gridView.height) * 0.55
+            width: Math.round(Math.max(240 * Style.scale, Math.min(420 * Style.scale, baseSize)))
+            height: width
+            radius: Style.radiusPanel * 3
+            color: Style.colorPanel
+            opacity: 0.94
+            border.width: Style.borderWidth * 2
+            border.color: Style.colorAccent
+
+            Column {
+                anchors.centerIn: parent
+                spacing: Style.spacingMedium
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: root.letterScrollLetter
+                    color: Style.colorTextPrimary
+                    font.family: Fonts.pixelify
+                    font.pixelSize: Math.round(overlayCard.width * 0.42)
+                    font.bold: true
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: root.letterScrollCount + (root.letterScrollCount === 1 ? " game" : " games")
+                    color: Style.colorTextSecondary
+                    font.family: Fonts.smooch
+                    font.pixelSize: Style.fontSizeLarge
+                }
+            }
+        }
     }
 
     Keys.onPressed: {
