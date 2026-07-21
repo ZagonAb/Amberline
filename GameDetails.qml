@@ -465,6 +465,33 @@ Rectangle {
 
         onLoaded: {
             if (item && item.forceActiveFocus) item.forceActiveFocus()
+                if (item) {
+                    if (item.openCredentialsRequested) {
+                        item.openCredentialsRequested.connect(function() {
+                            raLoader.sourceComponent = _raCredentialsComponent
+                            raLoader.opacity = 0
+                            _raOpenAnim.restart()
+                        })
+                    }
+                    if (item.credentialsSaved) {
+                        item.credentialsSaved.connect(function() {
+                            raLoader.sourceComponent = _raInfoComponent
+                            raLoader.opacity = 0
+                            _raOpenAnim.restart()
+                        })
+                    }
+                    if (item.popupClosed) {
+                        item.popupClosed.connect(function() {
+                            if (api.memory.has("ra_api_key") && api.memory.has("ra_api_user")) {
+                                raLoader.sourceComponent = _raInfoComponent
+                                raLoader.opacity = 0
+                                _raOpenAnim.restart()
+                            } else {
+                                _raCloseAnim.start()
+                            }
+                        })
+                    }
+                }
         }
     }
 

@@ -4,6 +4,8 @@ import QtGraphicalEffects 1.12
 FocusScope {
     id: root
 
+    focus: true
+
     property var gameData: null
     property var themeColors: ({})
     property bool isDarkTheme: true
@@ -27,6 +29,7 @@ FocusScope {
     readonly property int _achCellSize: Math.round(72 * Style.scale)
 
     signal closeRequested()
+    signal openCredentialsRequested()
 
     property string _apiKey: api.memory.has("ra_api_key") ? api.memory.get("ra_api_key") : ""
     property string _apiUser: api.memory.has("ra_api_user") ? api.memory.get("ra_api_user") : ""
@@ -53,6 +56,8 @@ FocusScope {
     property var _achievements: []
     property int _selIdx: 0
     property int _raPlayers: 0
+
+    property bool _logoutPopupVisible: false
 
     function _log(msg) {
         root._debugLog = root._debugLog + "\n" + msg;
@@ -344,6 +349,7 @@ FocusScope {
     }
 
     function load() {
+        _logoutPopupVisible = false
         _apiKey = api.memory.has("ra_api_key") ? api.memory.get("ra_api_key") : "";
         _apiUser = api.memory.has("ra_api_user") ? api.memory.get("ra_api_user") : "";
 
@@ -629,7 +635,7 @@ FocusScope {
                     title: a.Title || "",
                     description: a.Description || "",
                     points: aPoints,
-                         badgeUrl: a.BadgeName ? (_media + "/Badge/" + a.BadgeName + ".png") : "",
+                    badgeUrl: a.BadgeName ? (_media + "/Badge/" + a.BadgeName + ".png") : "",
                          badgeLocked: a.BadgeName ? (_media + "/Badge/" + a.BadgeName + "_lock.png") : "",
                          earned: earned,
                          dateEarned: earned ? a.DateEarned : "",
@@ -697,10 +703,26 @@ FocusScope {
     }
 
     Keys.onPressed: function(event) {
+        console.log("[RA] Keys.onPressed (root) event.key=" + event.key + " isDetails=" + api.keys.isDetails(event) + " isAutoRepeat=" + event.isAutoRepeat + " _hasCredentials=" + _hasCredentials + " _errorMsg='" + _errorMsg + "' _logoutPopupVisible=" + _logoutPopupVisible)
+
+        if (_logoutPopupVisible) {
+            event.accepted = true
+            return
+        }
+
         if (!event.isAutoRepeat && api.keys.isFilters(event)) {
             event.accepted = true
             if (soundManager) soundManager.playNav();
             root.load()
+            return
+        }
+
+        if (!event.isAutoRepeat && api.keys.isDetails(event) && _hasCredentials && _errorMsg === "") {
+            event.accepted = true
+            console.log("[RA] Abriendo popup de cierre de sesión")
+            _logoutPopupVisible = true
+            _logoutPopup.forceActiveFocus()
+            _cancelBtn.forceActiveFocus()
         }
     }
 
@@ -824,8 +846,8 @@ FocusScope {
         Item {
             anchors.fill: parent
             visible: !_searching && !_loading && _errorMsg === ""
-                && (_notFound || _noAchievementsYet
-                || (!_notFound && _raGameId !== "" && _raNumAch === 0 && !_noAchievementsYet))
+            && (_notFound || _noAchievementsYet
+            || (!_notFound && _raGameId !== "" && _raNumAch === 0 && !_noAchievementsYet))
 
             Column {
                 anchors.centerIn: parent
@@ -843,8 +865,8 @@ FocusScope {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: _notFound
-                        ? "This game was not found on RetroAchievements"
-                        : "No achievements available for this game yet"
+                    ? "This game was not found on RetroAchievements"
+                    : "No achievements available for this game yet"
                     color: _textMuted
                     font.family: Fonts.smooch
                     font.pixelSize: Style.fontSizeTitle
@@ -859,19 +881,22 @@ FocusScope {
             id: _dataState
             anchors.fill: parent
             visible: !_searching && !_loading && _errorMsg === ""
-                && !_notFound && _raNumAch > 0
+            && !_notFound && _raNumAch > 0
 
             readonly property var _selAch: {
                 var idx = _achGrid.currentIndex
                 if (idx < 0 || idx >= _achGrid.model) return {}
                 if (idx < root._earnedList.length)
                     return root._earnedList[idx] || {}
-                return root._lockedList[idx - root._earnedList.length] || {}
+                    return root._lockedList[idx - root._earnedList.length] || {}
             }
 
             onVisibleChanged: {
                 if (visible) {
-                    Qt.callLater(function() { _achGrid.forceActiveFocus() })
+                    Qt.callLater(function() {
+                        _achGrid.forceActiveFocus()
+                        console.log("[RA] _achGrid focused")
+                    })
                 }
             }
 
@@ -974,7 +999,7 @@ FocusScope {
                         radius: height / 2
                         color: root._numEarned === root._raNumAch ? _progressFull : _progressFill
                         width: root._raNumAch > 0
-                            ? parent.width * root._numEarned / root._raNumAch : 0
+                        ? parent.width * root._numEarned / root._raNumAch : 0
                         Behavior on width { NumberAnimation { duration: 800; easing.type: Easing.OutQuad } }
                         Behavior on color { ColorAnimation { duration: Style.animationNormal } }
                     }
@@ -1046,14 +1071,6 @@ FocusScope {
                             font.pixelSize: Style.fontSizeLarge
                             font.bold: true
                         }
-                        /*Text {
-                            anchors.right: parent.right
-                            visible: (_dataState._selAch.dateEarned || "") !== ""
-                            text: "\u2713 " + (_dataState._selAch.dateEarned || "")
-                            color: _textMuted
-                            font.family: Fonts.smooch
-                            font.pixelSize: Math.round(9 * Style.scale)
-                        }*/
                     }
                 }
             }
@@ -1078,7 +1095,11 @@ FocusScope {
                 cellWidth: root._achCellSize
                 cellHeight: root._achCellSize
 
+                Keys.forwardTo: [root]
+
                 Keys.onPressed: function(event) {
+                    console.log("[RA] _achGrid Keys.onPressed event.key=" + event.key + " isDetails=" + api.keys.isDetails(event) + " isCancel=" + api.keys.isCancel(event))
+
                     if (api.keys.isCancel(event)) {
                         event.accepted = true
                         if (soundManager) soundManager.playBack();
@@ -1088,7 +1109,7 @@ FocusScope {
                     if (event.key === Qt.Key_Left || event.key === Qt.Key_Right ||
                         event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
                         if (soundManager) soundManager.playNav();
-                    }
+                        }
                 }
 
                 delegate: Item {
@@ -1107,8 +1128,8 @@ FocusScope {
                         color: _cell._selected ? _bgHighlight : "transparent"
                         border.color: {
                             if (_cell._selected) return Style.colorFocus
-                            if (_cell._isEarned) return _progressFill
-                            return _borderColor
+                                if (_cell._isEarned) return _progressFill
+                                    return _borderColor
                         }
                         border.width: _cell._selected ? Style.borderWidth * 2 : Style.borderWidth
                         Behavior on border.color { ColorAnimation { duration: Style.animationNormal } }
@@ -1122,8 +1143,8 @@ FocusScope {
                                 id: _badgeImg
                                 anchors.fill: parent
                                 source: _cell._isEarned
-                                    ? (_cell._ach.badgeUrl    || "")
-                                    : (_cell._ach.badgeLocked || "")
+                                ? (_cell._ach.badgeUrl    || "")
+                                : (_cell._ach.badgeLocked || "")
                                 fillMode: Image.PreserveAspectFit
                                 asynchronous: true
                                 mipmap: true
@@ -1160,6 +1181,161 @@ FocusScope {
                                 font.bold: true
                                 font.letterSpacing: 2
                             }
+                        }
+                    }
+                }
+            }
+
+            Item {
+                id: _logoutPopup
+                anchors.fill: parent
+                visible: root._logoutPopupVisible
+                z: 50
+                focus: true
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#F2000000"
+                }
+
+                Rectangle {
+                    id: logoutDialog
+                    anchors.centerIn: parent
+                    width: Math.min(_achGrid.width, 450 * Style.scale)
+                    height: Math.min(parent.height - Style.spacingLarge * 4, 200 * Style.scale)
+                    radius: Style.radiusPanel * 2
+                    color: Style.colorPanel
+                    border.color: Style.colorBorder
+                    border.width: Style.borderWidth
+
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: Style.spacingLarge
+                        spacing: Style.spacingMedium
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width
+                            text: "You're about to sign out of your RetroAchievements account in Amberline.\nAre you sure you want to continue?"
+                            color: Style.colorTextPrimary
+                            font.family: Fonts.smooch
+                            font.pixelSize: Style.fontSizeLarge
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: Style.spacingMedium
+
+                            Item {
+                                id: _okBtn
+                                width: Math.round(80 * Style.scale)
+                                height: Math.round(30 * Style.scale)
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Style.radiusPanel
+                                    color: _okBtn.activeFocus ? Style.colorAccent : Style.colorPanelAlt
+                                    border.color: _okBtn.activeFocus ? Style.colorFocus : Style.colorBorder
+                                    border.width: Style.borderWidth
+                                    Behavior on color { ColorAnimation { duration: Style.animationNormal } }
+                                    Behavior on border.color { ColorAnimation { duration: Style.animationNormal } }
+                                }
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "Ok"
+                                    color: _okBtn.activeFocus ? Style.colorBackground : Style.colorTextPrimary
+                                    font.family: Fonts.smooch
+                                    font.pixelSize: Style.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Keys.onPressed: function(event) {
+                                    if (api.keys.isAccept(event) && !event.isAutoRepeat) {
+                                        event.accepted = true
+                                        console.log("[RA] Logging out: unsetting credentials")
+                                        api.memory.unset("ra_api_key")
+                                        api.memory.unset("ra_api_user")
+                                        root._logoutPopupVisible = false
+                                        root.load()
+                                        root.openCredentialsRequested()
+                                    }
+                                }
+                            }
+
+                            Item {
+                                id: _cancelBtn
+                                width: Math.round(80 * Style.scale)
+                                height: Math.round(30 * Style.scale)
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Style.radiusPanel
+                                    color: _cancelBtn.activeFocus ? "#C62828" : Style.colorPanelAlt
+                                    border.color: _cancelBtn.activeFocus ? "#E53935" : Style.colorBorder
+                                    border.width: Style.borderWidth
+                                    Behavior on color { ColorAnimation { duration: Style.animationNormal } }
+                                    Behavior on border.color { ColorAnimation { duration: Style.animationNormal } }
+                                }
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "Cancel"
+                                    color: _cancelBtn.activeFocus ? "#efcdcd" : Style.colorTextPrimary
+                                    font.family: Fonts.smooch
+                                    font.pixelSize: Style.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Keys.onPressed: function(event) {
+                                    if (api.keys.isAccept(event) && !event.isAutoRepeat) {
+                                        event.accepted = true
+                                        root._logoutPopupVisible = false
+                                        _achGrid.forceActiveFocus()
+                                    } else if (api.keys.isCancel(event) && !event.isAutoRepeat) {
+                                        event.accepted = true
+                                        root._logoutPopupVisible = false
+                                        _achGrid.forceActiveFocus()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Left) {
+                        event.accepted = true
+                        if (_cancelBtn.activeFocus) {
+                            _okBtn.forceActiveFocus()
+                        } else if (_okBtn.activeFocus) {
+                            _cancelBtn.forceActiveFocus()
+                        }
+                    } else if (event.key === Qt.Key_Right) {
+                        event.accepted = true
+                        if (_okBtn.activeFocus) {
+                            _cancelBtn.forceActiveFocus()
+                        } else if (_cancelBtn.activeFocus) {
+                            _okBtn.forceActiveFocus()
+                        }
+                    } else if (api.keys.isCancel(event)) {
+                        event.accepted = true
+                        root._logoutPopupVisible = false
+                        _achGrid.forceActiveFocus()
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        root._logoutPopupVisible = false
+                        _achGrid.forceActiveFocus()
+                    }
+                    propagateComposedEvents: true
+                    onPressed: function(mouse) {
+                        if (mouse.target === parent) {
+                            root._logoutPopupVisible = false
+                            _achGrid.forceActiveFocus()
                         }
                     }
                 }

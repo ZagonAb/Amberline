@@ -159,9 +159,7 @@ FocusScope {
         id: _focusTimer
         interval: 30
         onTriggered: {
-            root._activeField = "user"
-            root.userInputActivated()
-            _userFieldScope.forceActiveFocus()
+            root._activateField("user")
         }
     }
 
@@ -257,6 +255,17 @@ FocusScope {
                     }
                 }
                 Keys.onDownPressed: { event.accepted = true; _keyFieldScope.forceActiveFocus() }
+                Keys.onTabPressed: {
+                    event.accepted = true
+                    if (root._testState === "testing") return
+                    root._activateField("key")
+                }
+                Keys.onBacktabPressed: {
+                    event.accepted = true
+                    if (root._testState === "testing") return
+                    root._activeField = "none"
+                    _cancelBtn.forceActiveFocus()
+                }
 
                 Column {
                     id: _userFieldCol
@@ -293,6 +302,8 @@ FocusScope {
                             clip: true
                             readOnly: root._activeField !== "user" || root._testState === "testing"
                             activeFocusOnPress: false
+                            selectByMouse: true
+                            persistentSelection: true
                             inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                             | Qt.ImhSensitiveData | Qt.ImhMultiLine
 
@@ -326,6 +337,7 @@ FocusScope {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.IBeamCursor
+                            enabled: root._activeField !== "user"
                             onClicked: {
                                 if (root._testState !== "testing")
                                     root._activateField("user")
@@ -357,6 +369,17 @@ FocusScope {
                 }
                 Keys.onUpPressed: { event.accepted = true; _userFieldScope.forceActiveFocus() }
                 Keys.onDownPressed: { event.accepted = true; _okBtn.forceActiveFocus() }
+                Keys.onTabPressed: {
+                    event.accepted = true
+                    if (root._testState === "testing") return
+                    root._activeField = "none"
+                    _okBtn.forceActiveFocus()
+                }
+                Keys.onBacktabPressed: {
+                    event.accepted = true
+                    if (root._testState === "testing") return
+                    root._activateField("user")
+                }
 
                 Column {
                     id: _keyFieldCol
@@ -393,6 +416,8 @@ FocusScope {
                             clip: true
                             readOnly: root._activeField !== "key" || root._testState === "testing"
                             activeFocusOnPress: false
+                            selectByMouse: true
+                            persistentSelection: true
                             inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                             | Qt.ImhSensitiveData | Qt.ImhMultiLine
 
@@ -426,6 +451,7 @@ FocusScope {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.IBeamCursor
+                            enabled: root._activeField !== "key"
                             onClicked: {
                                 if (root._testState !== "testing")
                                     root._activateField("key")
@@ -538,6 +564,16 @@ FocusScope {
 
                     Keys.onUpPressed: { event.accepted = true; _keyFieldScope.forceActiveFocus() }
                     Keys.onRightPressed: { event.accepted = true; _cancelBtn.forceActiveFocus() }
+                    Keys.onTabPressed: {
+                        event.accepted = true
+                        if (root._testState === "testing") return
+                        _cancelBtn.forceActiveFocus()
+                    }
+                    Keys.onBacktabPressed: {
+                        event.accepted = true
+                        if (root._testState === "testing") return
+                        root._activateField("key")
+                    }
                     Keys.onPressed: {
                         if (_okBtn._busy) { event.accepted = true; return }
                         if (api.keys.isCancel(event)) { event.accepted = true; root.close(); return }
@@ -577,6 +613,16 @@ FocusScope {
 
                     Keys.onUpPressed: { event.accepted = true; _keyFieldScope.forceActiveFocus() }
                     Keys.onLeftPressed: { event.accepted = true; _okBtn.forceActiveFocus() }
+                    Keys.onTabPressed: {
+                        event.accepted = true
+                        if (root._testState === "testing") return
+                        root._activateField("user")
+                    }
+                    Keys.onBacktabPressed: {
+                        event.accepted = true
+                        if (root._testState === "testing") return
+                        _okBtn.forceActiveFocus()
+                    }
                     Keys.onPressed: {
                         if (root._testState === "testing") { event.accepted = true; return }
                         if (api.keys.isCancel(event) || api.keys.isAccept(event)
