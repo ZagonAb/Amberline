@@ -200,7 +200,18 @@ FocusScope {
                     api.memory.set('collectionKind', kind);
                     api.memory.set('collectionName', name);
                     api.memory.set('gameTitle', title);
-                    game.launch();
+
+                    var collectionName = "";
+                    if (game.collections && game.collections.count > 0) {
+                        collectionName = game.collections.get(0).name;
+                    }
+                    if (collectionName === "") {
+                        collectionName = name;
+                    }
+
+                    launchOverlay.show(title, collectionName);
+                    launchDelayTimer.gameToLaunch = game;
+                    launchDelayTimer.restart();
                 }
                 onCycleImageRequested: {
                     gameDetails.cycleAsset();
@@ -225,6 +236,34 @@ FocusScope {
                     gameGrid.focusGrid();
                 }
             }
+        }
+    }
+
+    LaunchOverlay {
+        id: launchOverlay
+        visible: false
+    }
+
+    Timer {
+        id: launchDelayTimer
+        interval: 2000
+        repeat: false
+        property var gameToLaunch: null
+        onTriggered: {
+            if (gameToLaunch) {
+                gameToLaunch.launch();
+                gameToLaunch = null;
+                hideOverlayTimer.start();
+            }
+        }
+    }
+
+    Timer {
+        id: hideOverlayTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            launchOverlay.hide();
         }
     }
 
