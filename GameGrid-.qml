@@ -14,9 +14,6 @@ FocusScope {
 
     property bool blurActive: false
 
-    property bool favoriteConfirmVisible: false
-    property int favoriteConfirmFocusIndex: 0
-
     readonly property bool letterFilterEnabled: sourceEntry
     && sourceEntry.kind !== "favorites"
     && sourceEntry.kind !== "lastplayed"
@@ -270,23 +267,6 @@ FocusScope {
         });
     }
 
-    function requestFavoriteRemoval() {
-        if (!root.currentGame) return;
-        root.favoriteConfirmFocusIndex = 0;
-        root.favoriteConfirmVisible = true;
-        favoriteConfirmPopup.forceActiveFocus();
-    }
-
-    function closeFavoriteConfirm() {
-        root.favoriteConfirmVisible = false;
-        gridView.forceActiveFocus();
-    }
-
-    function confirmFavoriteRemoval() {
-        root.toggleCurrentFavorite();
-        root.closeFavoriteConfirm();
-    }
-
     GridView {
         id: gridView
         anchors.fill: parent
@@ -436,129 +416,15 @@ FocusScope {
     }
 
     Keys.onPressed: {
-        if (root.favoriteConfirmVisible) return;
-
         if (!event.isAutoRepeat && api.keys.isAccept(event)) {
             event.accepted = true;
             if (root.currentGame) root.gameActivated(root.currentGame);
         } else if (api.keys.isDetails(event)) {
             event.accepted = true;
-            if (root.sourceEntry && root.sourceEntry.kind === "favorites") {
-                root.requestFavoriteRemoval();
-            } else {
-                root.toggleCurrentFavorite();
-            }
+            root.toggleCurrentFavorite();
         } else if (api.keys.isFilters(event)) {
             event.accepted = true;
             root.cycleImageRequested();
-        }
-    }
-
-    FocusScope {
-        id: favoriteConfirmPopup
-        anchors.fill: parent
-        z: 500
-        visible: root.favoriteConfirmVisible
-        enabled: visible
-
-        Keys.onPressed: function(event) {
-            if (event.isAutoRepeat) return;
-            event.accepted = true;
-
-            if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
-                root.favoriteConfirmFocusIndex = root.favoriteConfirmFocusIndex === 0 ? 1 : 0;
-            } else if (api.keys.isCancel(event)) {
-                root.closeFavoriteConfirm();
-            } else if (api.keys.isAccept(event)) {
-                if (root.favoriteConfirmFocusIndex === 1) {
-                    root.confirmFavoriteRemoval();
-                } else {
-                    root.closeFavoriteConfirm();
-                }
-            } else {
-                event.accepted = false;
-            }
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            color: "#000000"
-            opacity: 0.6
-        }
-
-        Rectangle {
-            id: confirmCard
-            anchors.centerIn: parent
-            width: Math.min(parent.width * 0.82, vpx(420))
-            height: confirmColumn.height + Style.spacingLarge * 2
-            radius: Style.radiusPanel * 2
-            color: Style.colorPanel
-            border.width: Style.borderWidth * 3
-            border.color: Style.colorFocus
-
-            Column {
-                id: confirmColumn
-                anchors.centerIn: parent
-                width: parent.width - Style.spacingLarge * 2
-                spacing: Style.spacingLarge
-
-                Text {
-                    width: parent.width
-                    text: "Remove \"" + root.currentGame.title + "\" from your favorites?"
-                    color: Style.colorTextPrimary
-                    font.family: Fonts.smooch
-                    font.pixelSize: Style.fontSizeTitle
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Style.spacingLarge
-
-                    Rectangle {
-                        id: cancelButton
-                        width: vpx(120)
-                        height: vpx(46)
-                        radius: Style.radiusPanel
-                        color: root.favoriteConfirmFocusIndex === 0 ? Style.colorAccent : Style.colorPanelAlt
-                        border.width: root.favoriteConfirmFocusIndex === 0 ? Style.borderWidth * 2 : Style.borderWidth
-                        border.color: root.favoriteConfirmFocusIndex === 0 ? Style.colorFocus : Style.colorBorder
-
-                        Behavior on color { ColorAnimation { duration: Style.animationFast } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Cancel"
-                            color: root.favoriteConfirmFocusIndex === 0 ? Style.colorBackground : Style.colorTextPrimary
-                            font.family: Fonts.smooch
-                            font.pixelSize: Style.fontSizeLarge
-                            font.bold: root.favoriteConfirmFocusIndex === 0
-                        }
-                    }
-
-                    Rectangle {
-                        id: okButton
-                        width: vpx(120)
-                        height: vpx(46)
-                        radius: Style.radiusPanel
-                        color: root.favoriteConfirmFocusIndex === 1 ? Style.colorAccent : Style.colorPanelAlt
-                        border.width: root.favoriteConfirmFocusIndex === 1 ? Style.borderWidth * 2 : Style.borderWidth
-                        border.color: root.favoriteConfirmFocusIndex === 1 ? Style.colorFocus : Style.colorBorder
-
-                        Behavior on color { ColorAnimation { duration: Style.animationFast } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "OK"
-                            color: root.favoriteConfirmFocusIndex === 1 ? Style.colorBackground : Style.colorTextPrimary
-                            font.family: Fonts.smooch
-                            font.pixelSize: Style.fontSizeLarge
-                            font.bold: root.favoriteConfirmFocusIndex === 1
-                        }
-                    }
-                }
-            }
         }
     }
 }
