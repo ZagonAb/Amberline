@@ -87,7 +87,45 @@ FocusScope {
         console.log("[GameView] ColorSetting cerrado, foco en índice 0");
     }
 
+    function openSearch() {
+        root.blurActive = true;
+        searchLoader.active = true;
+    }
+
+    function closeSearch() {
+        searchLoader.active = false;
+        root.blurActive = false;
+        gameGrid.focusGrid();
+    }
+
+    function launchGame(game) {
+        var entry = collectionBar.currentEntry;
+        var kind  = entry ? entry.kind  : "lastplayed";
+        var name  = entry ? entry.label : "Last Played";
+        var title = game.title;
+        console.log("[GameView] Lanzando juego, guardando kind=" + kind + ", name=" + name + ", title=" + title);
+        api.memory.set('collectionKind', kind);
+        api.memory.set('collectionName', name);
+        api.memory.set('gameTitle', title);
+
+        var collectionName = "";
+        if (game.collections && game.collections.count > 0) {
+            collectionName = game.collections.get(0).name;
+        }
+        if (collectionName === "") {
+            collectionName = name;
+        }
+
+        launchOverlay.show(title, collectionName);
+        launchDelayTimer.gameToLaunch = game;
+        launchDelayTimer.restart();
+    }
+
     Keys.onPressed: {
+        if (searchLoader.active) {
+            return;
+        }
+
         if (colorSetting.visible) {
             if (api.keys.isPrevPage(event) || api.keys.isNextPage(event)) {
                 event.accepted = true;
@@ -192,29 +230,13 @@ FocusScope {
                 blurActive: root.blurActive
 
                 onGameActivated: {
-                    var entry = collectionBar.currentEntry;
-                    var kind  = entry ? entry.kind  : "lastplayed";
-                    var name  = entry ? entry.label : "Last Played";
-                    var title = game.title;
-                    console.log("[GameView] Lanzando juego, guardando kind=" + kind + ", name=" + name + ", title=" + title);
-                    api.memory.set('collectionKind', kind);
-                    api.memory.set('collectionName', name);
-                    api.memory.set('gameTitle', title);
-
-                    var collectionName = "";
-                    if (game.collections && game.collections.count > 0) {
-                        collectionName = game.collections.get(0).name;
-                    }
-                    if (collectionName === "") {
-                        collectionName = name;
-                    }
-
-                    launchOverlay.show(title, collectionName);
-                    launchDelayTimer.gameToLaunch = game;
-                    launchDelayTimer.restart();
+                    root.launchGame(game);
                 }
                 onCycleImageRequested: {
                     gameDetails.cycleAsset();
+                }
+                onSearchRequested: {
+                    root.openSearch();
                 }
             }
 
@@ -277,6 +299,24 @@ FocusScope {
 
         onThemeSelected: {
             Style.applyTheme(themeName);
+        }
+    }
+
+    Loader {
+        id: searchLoader
+        anchors.fill: parent
+        z: 50
+        active: false
+        source: "GameSearch.qml"
+
+        onLoaded: {
+            item.targetX = Qt.binding(function() { return gameGrid.mapToItem(root, 0, 0).x; });
+            item.targetWidth = Qt.binding(function() { return gameGrid.width; });
+            item.closeRequested.connect(root.closeSearch);
+            item.gameLaunchRequested.connect(function(game) {
+                root.closeSearch();
+                root.launchGame(game);
+            });
         }
     }
 }

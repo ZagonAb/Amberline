@@ -1,0 +1,265 @@
+import QtQuick 2.15
+
+FocusScope {
+    id: root
+    anchors.fill: parent
+
+    signal closeRequested()
+    signal gameLaunchRequested(var game)
+
+    property real targetX: 0
+    property real targetWidth: parent.width
+
+    property int maxResults: 150
+    property var resultsList: []
+    property bool hasSearched: false
+    property string lastQuery: ""
+
+    function executeSearch() {
+        var q = searchInput.text.trim();
+        root.lastQuery = q;
+        root.hasSearched = true;
+
+        if (q === "") {
+            root.resultsList = [];
+            resultsView.currentIndex = -1;
+            return;
+        }
+
+        var needle = q.toLowerCase();
+        var out = [];
+        for (var i = 0; i < api.allGames.count && out.length < root.maxResults; i++) {
+            var g = api.allGames.get(i);
+            if (root.matchesGame(g, needle)) out.push(g);
+        }
+
+        root.resultsList = out;
+        resultsView.currentIndex = out.length > 0 ? 0 : -1;
+
+        if (out.length > 0) {
+            resultsView.forceActiveFocus();
+        } else {
+            searchInput.forceActiveFocus();
+        }
+    }
+
+    function matchesGame(game, needle) {
+        if (game.title && game.title.toLowerCase().indexOf(needle) !== -1) return true;
+        if (game.developer && game.developer.toLowerCase().indexOf(needle) !== -1) return true;
+        if (game.publisher && game.publisher.toLowerCase().indexOf(needle) !== -1) return true;
+        if (game.genre && game.genre.toLowerCase().indexOf(needle) !== -1) return true;
+        if (game.releaseYear && String(game.releaseYear).indexOf(needle) !== -1) return true;
+
+        var ratingPct = String(Math.round((game.rating || 0) * 100));
+        if (ratingPct.indexOf(needle) !== -1) return true;
+
+        return false;
+    }
+
+    function collectionNameForGame(game) {
+        if (game && game.collections && game.collections.count > 0) {
+            return game.collections.get(0).name;
+        }
+        return "";
+    }
+
+    function launchGame(game) {
+        if (!game) return;
+        root.gameLaunchRequested(game);
+    }
+
+    Component.onCompleted: searchInput.forceActiveFocus()
+
+    Rectangle {
+        anchors.fill: parent
+        color: "#000000"
+        opacity: 0.65
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.closeRequested()
+        }
+    }
+
+    Column {
+        id: panelColumn
+        x: root.targetX + (root.targetWidth - width) / 2
+        anchors.top: parent.top
+        anchors.topMargin: Math.round(parent.height * 0.12)
+        width: root.targetWidth * 0.9
+        spacing: Style.spacingSmall
+
+        Rectangle {
+            id: searchBar
+            width: parent.width
+            height: Math.round(58 * Style.scale)
+            radius: Style.radiusPanel * 2
+            color: Style.colorPanel
+            border.width: Style.borderWidth * 3
+            border.color: searchInput.activeFocus ? Style.colorFocus : Style.colorBorder
+
+            Behavior on border.color { ColorAnimation { duration: Style.animationFast } }
+
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: Style.spacingMedium
+                anchors.rightMargin: Style.spacingMedium
+                spacing: Style.spacingMedium
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "\u{1F50D}"
+                    color: Style.colorTextSecondary
+                    font.pixelSize: Style.fontSizeTitle
+                }
+
+                TextInput {
+                    id: searchInput
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - Math.round(40 * Style.scale) - Style.spacingMedium
+                    color: Style.colorTextPrimary
+                    font.family: Fonts.smooch
+                    font.pixelSize: Style.fontSizeTitle
+                    clip: true
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Buscar por título, desarrollador, publisher, año o género..."
+                        color: Style.colorTextSecondary
+                        font: searchInput.font
+                        visible: searchInput.text.length === 0
+                    }
+
+                    Keys.onPressed: function(event) {
+                        if (!event.isAutoRepeat && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || api.keys.isAccept(event))) {
+                            event.accepted = true;
+                            root.executeSearch();
+                        } else if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) {
+                            if (searchInput.text.length > 0) {
+                                event.accepted = false;
+                            } else if (!event.isAutoRepeat && api.keys.isCancel(event)) {
+                                event.accepted = true;
+                                root.closeRequested();
+                            } else {
+                                event.accepted = false;
+                            }
+                        } else if (!event.isAutoRepeat && api.keys.isCancel(event)) {
+                            event.accepted = true;
+                            root.closeRequested();
+                        } else if (!event.isAutoRepeat && event.key === Qt.Key_Down && root.resultsList.length > 0) {
+                            event.accepted = true;
+                            resultsView.forceActiveFocus();
+                        } else {
+                            event.accepted = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            id: resultsPanel
+            width: parent.width
+            visible: root.hasSearched
+            height: visible ? Math.min(Math.round(460 * Style.scale), Math.max(Math.round(76 * Style.scale), resultsView.contentHeight + Style.spacingSmall * 2)) : 0
+            radius: Style.radiusPanel * 2
+            color: Style.colorPanel
+            border.width: Style.borderWidth * 3
+            border.color: Style.colorBorder
+            clip: true
+
+            Behavior on height { NumberAnimation { duration: Style.animationFast; easing.type: Easing.OutCubic } }
+
+            Text {
+                anchors.centerIn: parent
+                visible: root.resultsList.length === 0
+                text: "Sin resultados para \"" + root.lastQuery + "\""
+                color: Style.colorTextSecondary
+                font.family: Fonts.smooch
+                font.pixelSize: Style.fontSizeMedium
+            }
+
+            ListView {
+                id: resultsView
+                anchors.fill: parent
+                anchors.margins: Style.spacingSmall
+                clip: true
+                visible: root.resultsList.length > 0
+                model: root.resultsList
+                currentIndex: -1
+                keyNavigationWraps: false
+                cacheBuffer: Math.round(400 * Style.scale)
+
+                delegate: Rectangle {
+                    width: resultsView.width
+                    height: itemColumn.implicitHeight + Style.spacingMedium * 2
+                    radius: Style.radiusPanel
+                    color: ListView.isCurrentItem ? Style.colorAccentDim : "transparent"
+
+                    Behavior on color { ColorAnimation { duration: Style.animationFast } }
+
+                    Text {
+                        id: yearText
+                        anchors.right: parent.right
+                        anchors.rightMargin: Style.spacingMedium
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.releaseYear > 0 ? String(modelData.releaseYear) : ""
+                        color: Style.colorTextSecondary
+                        font.family: Fonts.smooch
+                        font.pixelSize: Style.fontSizeLarge
+                    }
+
+                    Column {
+                        id: itemColumn
+                        anchors.left: parent.left
+                        anchors.leftMargin: Style.spacingMedium
+                        anchors.right: yearText.left
+                        anchors.rightMargin: Style.spacingMedium
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Style.spacingTiny
+
+                        Text {
+                            text: modelData.title
+                            color: Style.colorTextPrimary
+                            font.family: Fonts.smooch
+                            font.pixelSize: Style.fontSizeTitle
+                            elide: Text.ElideRight
+                            width: parent.width
+                        }
+                        Text {
+                            text: [root.collectionNameForGame(modelData), modelData.developer, modelData.genre].filter(function(s) { return s && s.length; }).join(" · ")
+                            color: Style.colorTextSecondary
+                            font.family: Fonts.smooch
+                            font.pixelSize: Style.fontSizeLarge
+                            elide: Text.ElideRight
+                            width: parent.width
+                        }
+                    }
+                }
+
+                Keys.onPressed: function(event) {
+                    if (event.isAutoRepeat) return;
+
+                    if (api.keys.isAccept(event)) {
+                        event.accepted = true;
+                        var g = root.resultsList[resultsView.currentIndex];
+                        if (g) root.launchGame(g);
+                    } else if (api.keys.isCancel(event)) {
+                        event.accepted = true;
+                        searchInput.forceActiveFocus();
+                    } else if (event.key === Qt.Key_Up && resultsView.currentIndex === 0) {
+                        event.accepted = true;
+                        searchInput.forceActiveFocus();
+                    }
+                }
+            }
+        }
+    }
+
+    Keys.onPressed: function(event) {
+        if (!event.isAutoRepeat && api.keys.isCancel(event) && !searchInput.activeFocus && !resultsView.activeFocus) {
+            event.accepted = true;
+            root.closeRequested();
+        }
+    }
+}

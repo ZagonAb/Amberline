@@ -29,6 +29,7 @@ FocusScope {
 
     signal gameActivated(var game)
     signal cycleImageRequested()
+    signal searchRequested()
 
     function focusGrid() { gridView.forceActiveFocus(); }
 
@@ -313,6 +314,12 @@ FocusScope {
             if (count === 0) return;
             if (root.letterScrollActive && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
                 event.accepted = true;
+                return;
+            }
+
+            if (event.key === Qt.Key_Up && !event.isAutoRepeat && Math.floor(currentIndex / columns) === 0) {
+                event.accepted = true;
+                root.searchRequested();
                 return;
             }
 
