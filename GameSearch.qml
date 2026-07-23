@@ -106,11 +106,29 @@ FocusScope {
                 anchors.rightMargin: Style.spacingMedium
                 spacing: Style.spacingMedium
 
-                Text {
+                Item {
+                    id: searchIconWrapper
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "\u{1F50D}"
-                    color: Style.colorTextSecondary
-                    font.pixelSize: Style.fontSizeTitle
+                    width: Style.fontSizeTitle
+                    height: Style.fontSizeTitle
+
+                    IconImage {
+                        id: searchSvgIcon
+                        anchors.fill: parent
+                        iconName: "search"
+                        overlayColor: searchInput.activeFocus ? Style.colorFocus : Style.colorTextSecondary
+                        Behavior on overlayColor { ColorAnimation { duration: Style.animationFast } }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u{1F50D}"
+                        color: searchInput.activeFocus ? Style.colorFocus : Style.colorTextSecondary
+                        font.pixelSize: Style.fontSizeTitle
+                        visible: searchSvgIcon.children[0] === undefined
+                              || searchSvgIcon.children[0].status !== Image.Ready
+                        Behavior on color { ColorAnimation { duration: Style.animationFast } }
+                    }
                 }
 
                 TextInput {
@@ -124,7 +142,7 @@ FocusScope {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "Buscar por título, desarrollador, publisher, año o género..."
+                        text: "Search by title, dev, pub, year, genre..."
                         color: Style.colorTextSecondary
                         font: searchInput.font
                         visible: searchInput.text.length === 0
@@ -173,10 +191,10 @@ FocusScope {
             Text {
                 anchors.centerIn: parent
                 visible: root.resultsList.length === 0
-                text: "Sin resultados para \"" + root.lastQuery + "\""
+                text: "No results for \"" + root.lastQuery + "\""
                 color: Style.colorTextSecondary
                 font.family: Fonts.smooch
-                font.pixelSize: Style.fontSizeMedium
+                font.pixelSize: Style.fontSizeLarge * 1.2
             }
 
             ListView {
@@ -189,6 +207,16 @@ FocusScope {
                 currentIndex: -1
                 keyNavigationWraps: false
                 cacheBuffer: Math.round(400 * Style.scale)
+
+                highlightMoveDuration: 0
+                highlightRangeMode: ListView.ApplyRange
+                preferredHighlightBegin: Math.round(resultsView.height * 0.15)
+                preferredHighlightEnd: Math.round(resultsView.height * 0.85)
+
+                onCurrentIndexChanged: {
+                    if (currentIndex >= 0)
+                        positionViewAtIndex(currentIndex, ListView.Contain)
+                }
 
                 delegate: Rectangle {
                     width: resultsView.width
