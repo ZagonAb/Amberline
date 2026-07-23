@@ -179,7 +179,7 @@ FocusScope {
             id: resultsPanel
             width: parent.width
             visible: root.hasSearched
-            height: visible ? Math.min(Math.round(460 * Style.scale), Math.max(Math.round(76 * Style.scale), resultsView.contentHeight + Style.spacingSmall * 2)) : 0
+            height: visible ? Math.min(Math.round(440 * Style.scale), Math.max(Math.round(76 * Style.scale), resultsView.contentHeight + Style.spacingSmall * 2)) : 0
             radius: Style.radiusPanel * 2
             color: Style.colorPanel
             border.width: Style.borderWidth * 3
