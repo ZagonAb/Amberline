@@ -20,7 +20,8 @@ Item {
         { name: "cyberpunk", dotColor: "#09031a", ringColor: "#faf027" },
         { name: "aqua", dotColor: "#001519", ringColor: "#00dcdc" },
         { name: "palenight", dotColor: "#0a0e23", ringColor: "#7181d3" },
-        { name: "horizon", dotColor: "#1a0912", ringColor: "#e9466f" }
+        { name: "horizon", dotColor: "#1a0912", ringColor: "#e9466f" },
+        { name: "oled", dotColor: "#000000", ringColor: "#00e5ff" }
     ]
 
     property int highlightIndex: 5
@@ -57,7 +58,7 @@ Item {
     }
 
     readonly property int _circleSize: vpx(38)
-    readonly property int _itemWidth: vpx(52)
+    readonly property int _itemWidth: vpx(48)
     readonly property int _hPad: vpx(10)
     readonly property int _vPad: vpx(10)
 

@@ -160,6 +160,18 @@ Item {
             textPrimary: "#f5e6ea",
             textSecondary: "#bd97a2",
             favorite: "#e9466f"
+        },
+        oled: {
+            background: "#000000",
+            panel: "#0a0a0a",
+            panelAlt: "#141414",
+            border: "#2a2a2a",
+            accent: "#00e5ff",
+            accentDim: "#005f6b",
+            focus: "#66ffff",
+            textPrimary: "#f0f0f0",
+            textSecondary: "#a0a0a0",
+            favorite: "#00e5ff"
         }
     })
 
@@ -210,11 +222,6 @@ Item {
     Behavior on colorIconMono { ColorAnimation { duration: style.animationNormal } }
 
     property real scale: 1.0
-
-    // Relación de aspecto real de la pantalla (width/height). Se usa para
-    // distinguir pantallas tipo 4:3 (~1.33) de 16:9 (~1.78) y ajustar
-    // ciertos perfiles de layout del grid según corresponda. El umbral
-    // 1.5 cae justo entre ambos valores.
     property real screenAspectRatio: 16 / 9
     readonly property real narrowScreenThreshold: 1.5
     readonly property bool isNarrowScreen: screenAspectRatio <= narrowScreenThreshold

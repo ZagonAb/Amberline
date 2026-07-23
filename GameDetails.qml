@@ -186,8 +186,8 @@ Rectangle {
             model: root.availableAssetTypes
 
             delegate: Rectangle {
-                width: Math.round(14 * Style.scale)
-                height: Math.round(3 * Style.scale)
+                width: Math.round(16 * Style.scale)
+                height: Math.round(4 * Style.scale)
                 radius: height / 2
                 color: index === root.currentDotIndex ? Style.colorAccent : Style.colorBackground
 
@@ -201,6 +201,7 @@ Rectangle {
     Item {
         id: contentWrapper
         anchors.fill: parent
+        anchors.topMargin: Style.spacingSmall 
 
         transform: Translate { id: contentWrapperSlide; y: 0 }
 
