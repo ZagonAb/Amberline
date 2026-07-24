@@ -482,6 +482,8 @@ FocusScope {
                 } else {
                     root.closeFavoriteConfirm();
                 }
+            } else if (api.keys.isNextPage(event) || api.keys.isPrevPage(event)) {
+                event.accepted = true;
             } else {
                 event.accepted = false;
             }
