@@ -256,6 +256,56 @@ Rectangle {
                     console.warn("Video playback error:", errorString)
                 }
             }
+
+            Rectangle {
+                id: videoProgressBar
+                x: videoOutput.contentRect.x
+                y: videoOutput.contentRect.y + videoOutput.contentRect.height - height
+                width: videoOutput.contentRect.width
+                height: 4
+                radius: 2
+                color: "#40FFFFFF"
+                z: 10
+                visible: mediaPlayer.duration > 0 && videoContainer.visible
+
+                Rectangle {
+                    id: videoProgressFill
+                    anchors {
+                        left: parent.left
+                        top: parent.top
+                        bottom: parent.bottom
+                    }
+                    width: mediaPlayer.duration > 0
+                        ? parent.width * (mediaPlayer.position / mediaPlayer.duration)
+                        : 0
+                    radius: parent.radius
+                    color: Style.colorAccent
+                    opacity: 0.9
+                }
+
+                Timer {
+                    id: progressTimer
+                    interval: 32
+                    running: mediaPlayer.playbackState === MediaPlayer.PlayingState
+                    repeat: true
+                    property real lastPosition: 0
+                    property real lastTimestamp: 0
+
+                    onTriggered: {
+                        var now = Date.now();
+                        var elapsed = (now - lastTimestamp);
+                        if (mediaPlayer.playbackState === MediaPlayer.PlayingState && mediaPlayer.duration > 0) {
+                            var interpolated = Math.min(mediaPlayer.position + elapsed, mediaPlayer.duration);
+                            videoProgressFill.width = videoProgressBar.width * (interpolated / mediaPlayer.duration);
+                        }
+                        lastTimestamp = now;
+                    }
+
+                    onRunningChanged: {
+                        if (running) lastTimestamp = Date.now();
+                    }
+                }
+            }
         }
 
         Item {
