@@ -173,45 +173,43 @@ Rectangle {
     border.color: Style.colorBorder
     clip: true
 
+    Row {
+        id: assetDotLine
+        anchors.top: root.top
+        anchors.topMargin: Style.spacingSmall
+        anchors.horizontalCenter: root.horizontalCenter
+        spacing: Style.spacingSmall
+        z: 5
+        visible: !!root.game && root.availableAssetTypes.length > 1
+
+        Repeater {
+            model: root.availableAssetTypes
+
+            delegate: Rectangle {
+                width: Math.round(16 * Style.scale)
+                height: Math.round(4 * Style.scale)
+                radius: height / 2
+                color: index === root.currentDotIndex ? Style.colorAccent : Style.colorBackground
+
+                Behavior on color {
+                    ColorAnimation { duration: Style.animationFast }
+                }
+            }
+        }
+    }
+
     Item {
         id: contentWrapper
         anchors.fill: parent
 
         transform: Translate { id: contentWrapperSlide; y: 0 }
 
-        Row {
-            id: assetDotLine
-            anchors.top: parent.top
-            anchors.topMargin: Style.spacingSmall
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Style.spacingSmall
-            z: 5
-            visible: !!root.game && root.availableAssetTypes.length > 1
-
-            Repeater {
-                model: root.availableAssetTypes
-
-                delegate: Rectangle {
-                    width: Math.round(16 * Style.scale)
-                    height: Math.round(4 * Style.scale)
-                    radius: height / 2
-                    color: index === root.currentDotIndex ? Style.colorAccent : Style.colorBackground
-
-                    Behavior on color {
-                        ColorAnimation { duration: Style.animationFast }
-                    }
-                }
-            }
-        }
-
         Item {
             id: imageContainer
-            anchors.top: assetDotLine.bottom
-            anchors.topMargin: Style.spacingSmall
+            anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.leftMargin: Style.spacingMedium
-            anchors.rightMargin: Style.spacingMedium
+            anchors.margins: Style.spacingMedium
             height: parent.height * 0.42
             visible: true
 
@@ -227,12 +225,10 @@ Rectangle {
 
         Item {
             id: videoContainer
-            anchors.top: assetDotLine.bottom
-            anchors.topMargin: Style.spacingSmall
+            anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.leftMargin: Style.spacingMedium
-            anchors.rightMargin: Style.spacingMedium
+            anchors.margins: Style.spacingMedium
             height: parent.height * 0.42
             visible: false
             clip: true
@@ -260,12 +256,10 @@ Rectangle {
 
         Item {
             id: systemContentContainer
-            anchors.top: assetDotLine.bottom
-            anchors.topMargin: Style.spacingSmall
+            anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.leftMargin: Style.spacingMedium
-            anchors.rightMargin: Style.spacingMedium
+            anchors.margins: Style.spacingMedium
             height: parent.height * 0.42
             visible: false
 
