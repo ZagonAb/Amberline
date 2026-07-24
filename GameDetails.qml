@@ -15,12 +15,10 @@ Rectangle {
 
     onRaPanelOpenChanged: {
         if (raPanelOpen) {
-            // Pausar el video si se está reproduciendo
             if (mediaPlayer.playbackState === MediaPlayer.PlayingState) {
                 mediaPlayer.pause();
             }
         } else {
-            // Reanudar el video si el panel se cierra y el asset actual es video
             if (currentAssetType === "video" && mediaPlayer.source !== "") {
                 mediaPlayer.play();
             }
