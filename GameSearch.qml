@@ -15,6 +15,62 @@ FocusScope {
     property bool hasSearched: false
     property string lastQuery: ""
 
+    function normalizeForSearch(text) {
+        if (!text) return "";
+        return text.toLowerCase()
+            .replace(/[áàäâã]/g, "a")
+            .replace(/[éèëê]/g, "e")
+            .replace(/[íìïî]/g, "i")
+            .replace(/[óòöôõ]/g, "o")
+            .replace(/[úùüû]/g, "u")
+            .replace(/[ñ]/g, "n")
+            .replace(/[ç]/g, "c")
+            .trim();
+    }
+
+    function cleanAndSplitGenres(genreText) {
+        if (!genreText) return [];
+
+        var separators = [",", "/", "-", "&", "|", ";"];
+        var allParts = [genreText];
+
+        for (var i = 0; i < separators.length; i++) {
+            var separator = separators[i];
+            var newParts = [];
+
+            for (var j = 0; j < allParts.length; j++) {
+                var part = allParts[j];
+                var splitParts = part.split(separator);
+
+                for (var k = 0; k < splitParts.length; k++) {
+                    newParts.push(splitParts[k]);
+                }
+            }
+            allParts = newParts;
+        }
+
+        var cleanedParts = [];
+        for (var l = 0; l < allParts.length; l++) {
+            var cleaned = allParts[l].trim();
+
+            if (cleaned.length > 0 &&
+                cleaned.toLowerCase() !== "and" &&
+                cleaned.toLowerCase() !== "or" &&
+                cleaned.toLowerCase() !== "game" &&
+                cleaned.length > 2) {
+                cleanedParts.push(cleaned);
+            }
+        }
+
+        return cleanedParts;
+    }
+
+    function getFirstGenre(gameData) {
+        if (!gameData || !gameData.genre) return "Unknown";
+        var cleanedGenres = cleanAndSplitGenres(gameData.genre);
+        return cleanedGenres.length > 0 ? cleanedGenres[0] : "Unknown";
+    }
+
     function executeSearch() {
         var q = searchInput.text.trim();
         root.lastQuery = q;
@@ -26,7 +82,7 @@ FocusScope {
             return;
         }
 
-        var needle = q.toLowerCase();
+        var needle = normalizeForSearch(q);
         var out = [];
         for (var i = 0; i < api.allGames.count && out.length < root.maxResults; i++) {
             var g = api.allGames.get(i);
@@ -44,14 +100,20 @@ FocusScope {
     }
 
     function matchesGame(game, needle) {
-        if (game.title && game.title.toLowerCase().indexOf(needle) !== -1) return true;
-        if (game.developer && game.developer.toLowerCase().indexOf(needle) !== -1) return true;
-        if (game.publisher && game.publisher.toLowerCase().indexOf(needle) !== -1) return true;
-        if (game.genre && game.genre.toLowerCase().indexOf(needle) !== -1) return true;
-        if (game.releaseYear && String(game.releaseYear).indexOf(needle) !== -1) return true;
+        var fields = [
+            game.title || "",
+            game.developer || "",
+            game.publisher || "",
+            game.genre || "",
+            getFirstGenre(game),
+            game.releaseYear ? String(game.releaseYear) : "",
+            Math.round((game.rating || 0) * 100) + "%"
+        ];
 
-        var ratingPct = String(Math.round((game.rating || 0) * 100));
-        if (ratingPct.indexOf(needle) !== -1) return true;
+        for (var i = 0; i < fields.length; i++) {
+            var normalized = normalizeForSearch(fields[i]);
+            if (normalized.indexOf(needle) !== -1) return true;
+        }
 
         return false;
     }
@@ -144,6 +206,7 @@ FocusScope {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Search by title, dev, pub, year, genre..."
                         color: Style.colorTextSecondary
+                        opacity: 0.6
                         font: searchInput.font
                         visible: searchInput.text.length === 0
                     }
@@ -226,22 +289,40 @@ FocusScope {
 
                     Behavior on color { ColorAnimation { duration: Style.animationFast } }
 
-                    Text {
-                        id: yearText
+                    Column {
+                        id: rightInfo
                         anchors.right: parent.right
                         anchors.rightMargin: Style.spacingMedium
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.releaseYear > 0 ? String(modelData.releaseYear) : ""
-                        color: Style.colorTextSecondary
-                        font.family: Fonts.smooch
-                        font.pixelSize: Style.fontSizeLarge
+                        spacing: Style.spacingTiny
+
+                        Text {
+                            id: yearText
+                            anchors.right: parent.right
+                            text: modelData.releaseYear > 0 ? String(modelData.releaseYear) : ""
+                            color: Style.colorTextSecondary
+                            font.family: Fonts.smooch
+                            font.pixelSize: Style.fontSizeLarge
+                            font.bold: true
+                            visible: text.length > 0
+                        }
+                        Text {
+                            id: ratingText
+                            anchors.right: parent.right
+                            text: Math.round(modelData.rating * 100) + "%"
+                            color: Style.colorTextSecondary
+                            font.family: Fonts.smooch
+                            font.pixelSize: Style.fontSizeLarge
+                            font.bold: true
+                            visible: modelData.rating > 0
+                        }
                     }
 
                     Column {
                         id: itemColumn
                         anchors.left: parent.left
                         anchors.leftMargin: Style.spacingMedium
-                        anchors.right: yearText.left
+                        anchors.right: rightInfo.left
                         anchors.rightMargin: Style.spacingMedium
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: Style.spacingTiny
@@ -255,7 +336,11 @@ FocusScope {
                             width: parent.width
                         }
                         Text {
-                            text: [root.collectionNameForGame(modelData), modelData.developer, modelData.genre].filter(function(s) { return s && s.length; }).join(" · ")
+                            text: [
+                                root.collectionNameForGame(modelData),
+                                modelData.developer,
+                                root.getFirstGenre(modelData)
+                            ].filter(function(s) { return s && s.length; }).join(" · ")
                             color: Style.colorTextSecondary
                             font.family: Fonts.smooch
                             font.pixelSize: Style.fontSizeLarge
