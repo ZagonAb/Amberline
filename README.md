@@ -19,3 +19,5 @@
 ![screen2](https://github.com/ZagonAb/Amberline/blob/a8a566089a845ef19441df9ea17d0ecc17299a44/.meta/screenshots/screen2.png)
 
 ![screen3](https://github.com/ZagonAb/Amberline/blob/a8a566089a845ef19441df9ea17d0ecc17299a44/.meta/screenshots/screen3.png)
+
+![screen4](https://github.com/ZagonAb/Amberline/blob/b715791390de18cc5104a35fe1858aae09a52a1c/.meta/screenshots/screen4.png)
