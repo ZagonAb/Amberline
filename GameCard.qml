@@ -227,6 +227,7 @@ FocusableItem {
         radius: Style.radiusPanel
         opacity: root.blurActive ? 1 : 0
         visible: opacity > 0
+        z:10
 
         Behavior on opacity {
             NumberAnimation {
