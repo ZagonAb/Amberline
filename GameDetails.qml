@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtMultimedia 5.15
+import QtGraphicalEffects 1.15
 import "qrc:/qmlutils" as PegasusUtils
 
 Rectangle {
@@ -288,8 +289,8 @@ Rectangle {
                         bottom: parent.bottom
                     }
                     width: mediaPlayer.duration > 0
-                        ? parent.width * (mediaPlayer.position / mediaPlayer.duration)
-                        : 0
+                    ? parent.width * (mediaPlayer.position / mediaPlayer.duration)
+                    : 0
                     radius: parent.radius
                     color: Style.colorAccent
                     opacity: 0.9
@@ -331,27 +332,40 @@ Rectangle {
             height: parent.height * 0.42
             visible: false
 
-            Image {
-                id: systemImage
+            Item {
+                id: systemImageContainer
                 anchors.fill: parent
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                smooth: true
-                source: ""
-            }
-        }
 
-        Text {
-            anchors.horizontalCenter: systemContentContainer.horizontalCenter
-            anchors.verticalCenter: systemContentContainer.verticalCenter
-            width: root.width * 0.7
-            visible: !game
-            text: "Game artwork and details will appear here once you start your journey."
-            color: Style.colorTextSecondary
-            font.family: Fonts.smooch
-            font.pixelSize: Style.fontSizeLarge
-            wrapMode: Text.WordWrap
-            horizontalAlignment: Text.AlignHCenter
+                Image {
+                    id: systemImage
+                    anchors.fill: parent
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    smooth: true
+                    source: ""
+                    visible: false
+                }
+
+                ColorOverlay {
+                    anchors.fill: systemImage
+                    source: systemImage
+                    color: Style.currentThemeName === "light" ? "#0a0a0a" : "white"
+                    visible: systemImage.source !== "" && systemImage.status === Image.Ready
+                }
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                width: root.width * 0.7
+                visible: systemImage.source === "" || systemImage.status !== Image.Ready
+                text: "Game artwork and details will appear here once you start your journey."
+                color: Style.colorTextSecondary
+                font.family: Fonts.smooch
+                font.pixelSize: Style.fontSizeLarge
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+            }
         }
 
         Column {
