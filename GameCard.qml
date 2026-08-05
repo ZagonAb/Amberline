@@ -188,8 +188,6 @@ FocusableItem {
     highp float ex = min(uv.x, 1.0 - uv.x);
     highp float ey = min(uv.y, 1.0 - uv.y);
     highp float rim = 1.0 - smoothstep(0.0, rimW, min(ex, ey));
-
-    // Borde superior e izquierdo mas brillante (luz desde arriba)
     highp float rimTop = (1.0 - uv.y) * (1.0 - uv.x);
     rim = rim * (0.35 + rimTop * 0.65);
 
@@ -236,6 +234,7 @@ FocusableItem {
     Rectangle {
         id: cardOverlay
         anchors.fill: parent
+        z: 10
         color: "#F2000000"
         radius: Style.radiusPanel
         opacity: root.blurActive ? 1 : 0
