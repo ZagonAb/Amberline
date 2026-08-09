@@ -109,14 +109,16 @@ FocusScope {
         api.memory.set('gameTitle', title);
 
         var collectionName = "";
+        var collectionShortName = "";
         if (game.collections && game.collections.count > 0) {
             collectionName = game.collections.get(0).name;
+            collectionShortName = game.collections.get(0).shortName;
         }
         if (collectionName === "") {
             collectionName = name;
         }
 
-        launchOverlay.show(title, collectionName);
+        launchOverlay.show(title, collectionName, collectionShortName);
         launchDelayTimer.gameToLaunch = game;
         launchDelayTimer.restart();
     }
@@ -268,7 +270,7 @@ FocusScope {
 
     Timer {
         id: launchDelayTimer
-        interval: 2000
+        interval: 3000
         repeat: false
         property var gameToLaunch: null
         onTriggered: {

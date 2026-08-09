@@ -11,19 +11,27 @@ Rectangle {
 
     property string gameTitle: ""
     property string collectionName: ""
+    property string collectionShortName: ""
 
-    function show(title, collection) {
+    function show(title, collection, shortName) {
         gameTitle = title
         collectionName = collection
+        collectionShortName = shortName || ""
         visible = true
         fadeIn.start()
         scaleIn.start()
+        collectionImage.y = -collectionImage.height
+        systemLogo.y = -systemLogo.height
+        bounceIn.start()
+        bounceInLogo.start()
     }
 
     function hide() {
         visible = false
         opacity = 0.0
         centerBox.scale = 0.0
+        collectionImage.y = -collectionImage.height
+        systemLogo.y = -systemLogo.height
     }
 
     MouseArea {
@@ -89,6 +97,72 @@ Rectangle {
                 horizontalAlignment: Text.AlignHCenter
             }
         }
+    }
+
+    Image {
+        id: systemLogo
+        source: overlay.collectionShortName !== "" ? "assets/images/systems/" + overlay.collectionShortName + ".png" : ""
+        visible: source !== "" && status === Image.Ready
+        fillMode: Image.PreserveAspectFit
+        width: Math.min(parent.width * 0.18, 120 * Style.scale)
+        height: width
+        asynchronous: true
+        smooth: true
+
+        anchors.right: collectionImage.left
+        anchors.rightMargin: Style.spacingMedium
+        y: -height
+
+        layer.enabled: true
+        layer.effect: DropShadow {
+            horizontalOffset: 0
+            verticalOffset: 3 * Style.scale
+            radius: 6 * Style.scale
+            color: Qt.rgba(0,0,0,0.4)
+        }
+    }
+
+    Image {
+        id: collectionImage
+        source: overlay.collectionShortName !== "" ? "assets/images/systems/" + overlay.collectionShortName + "-content.png" : ""
+        visible: source !== "" && status === Image.Ready
+        fillMode: Image.PreserveAspectFit
+        width: Math.min(parent.width * 0.18, 120 * Style.scale)
+        height: width
+        asynchronous: true
+        smooth: true
+
+        anchors.right: parent.right
+        anchors.rightMargin: Style.spacingLarge * 1.5
+        y: -height
+
+        layer.enabled: true
+        layer.effect: DropShadow {
+            horizontalOffset: 0
+            verticalOffset: 3 * Style.scale
+            radius: 6 * Style.scale
+            color: Qt.rgba(0,0,0,0.4)
+        }
+    }
+
+    NumberAnimation {
+        id: bounceIn
+        target: collectionImage
+        property: "y"
+        from: -collectionImage.height
+        to: Style.spacingTiny * 1.5
+        duration: 1000
+        easing.type: Easing.OutBounce
+    }
+
+    NumberAnimation {
+        id: bounceInLogo
+        target: systemLogo
+        property: "y"
+        from: -systemLogo.height
+        to: Style.spacingTiny * 1.5
+        duration: 1000
+        easing.type: Easing.OutBounce
     }
 
     NumberAnimation {
