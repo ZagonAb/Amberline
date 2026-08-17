@@ -175,7 +175,6 @@ FocusScope {
         anchors.fill: parent
         color: Style.colorBackground
         z: 1000
-
         property int minSplashDuration: 700
         readonly property bool splashHidden: themeRoot.interfaceReady && themeRoot.minSplashTimeElapsed
 
