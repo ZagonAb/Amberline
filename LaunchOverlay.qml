@@ -145,14 +145,19 @@ Rectangle {
         }
     }
 
-    NumberAnimation {
+    SequentialAnimation {
         id: bounceIn
-        target: collectionImage
-        property: "y"
-        from: -collectionImage.height
-        to: Style.spacingTiny * 1.5
-        duration: 1000
-        easing.type: Easing.OutBounce
+
+        PauseAnimation { duration: 360 }
+
+        NumberAnimation {
+            target: collectionImage
+            property: "y"
+            from: -collectionImage.height
+            to: Style.spacingTiny * 1.5
+            duration: 1000
+            easing.type: Easing.OutBounce
+        }
     }
 
     NumberAnimation {
