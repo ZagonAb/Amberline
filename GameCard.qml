@@ -6,6 +6,10 @@ FocusableItem {
 
     property var game: null
     property bool blurActive: false
+    property string sourceKind: ""
+
+    readonly property bool badgeEnabled: isCurrent
+    && (sourceKind === "favorites" || sourceKind === "lastplayed")
 
     function collectionShortName(g) {
         if (!g || !g.collections || g.collections.count === 0) return ""
@@ -254,6 +258,90 @@ FocusableItem {
                 duration: Style.animationNormal
                 easing.type: Easing.InOutQuad
             }
+        }
+    }
+
+    Item {
+        id: badgeClipArea
+        anchors.fill: parent
+        anchors.margins: Style.spacingSmall
+        z: 4
+        clip: true
+
+        Loader {
+            id: badgeLoader
+            anchors {
+                left:         parent.left
+                bottom:       parent.bottom
+                leftMargin:   Style.spacingSmall
+                bottomMargin: Style.spacingSmall
+            }
+            active: root.badgeEnabled
+            sourceComponent: badgeComponent
+        }
+    }
+
+    Component {
+        id: badgeComponent
+
+        Item {
+            id: badgeRoot
+
+            implicitWidth:  badgePill.width
+            implicitHeight: badgePill.height
+
+            x: -badgePill.width
+
+            Rectangle {
+                id: badgePill
+                width:  badgeLabel.implicitWidth + Style.spacingMedium * 2
+                height: badgeLabel.implicitHeight + Style.spacingSmall * 2
+                radius: height / 2
+                color:  Qt.rgba(0, 0, 0, 0.62)
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                Text {
+                    id: badgeLabel
+                    anchors.centerIn: parent
+                    text: {
+                        if (!root.game || !root.game.collections || root.game.collections.count === 0)
+                            return ""
+                            var c = root.game.collections.get(0)
+                            return c ? c.shortName.toUpperCase() : ""
+                    }
+                    color: Style.colorAccent
+                    font.family:    global.fonts.condensed
+                    font.pixelSize: Style.fontSizeSmall
+                    font.bold: true
+                }
+            }
+
+            SequentialAnimation {
+                id: badgeAnim
+                running: false
+
+                NumberAnimation {
+                    target:   badgeRoot
+                    property: "x"
+                    from:   -badgePill.width
+                    to:      0
+                    duration: 320
+                    easing.type: Easing.OutCubic
+                }
+
+                PauseAnimation { duration: 2200 }
+
+                NumberAnimation {
+                    target:   badgeRoot
+                    property: "x"
+                    to:  -badgePill.width
+                    duration: 280
+                    easing.type: Easing.InCubic
+                }
+            }
+
+            Component.onCompleted: badgeAnim.start()
         }
     }
 }

@@ -308,6 +308,7 @@ FocusScope {
             game: modelData
             isCurrent: GridView.isCurrentItem
             blurActive: root.blurActive || root.letterScrollActive
+            sourceKind: root.sourceEntry ? root.sourceEntry.kind : ""
         }
 
         Keys.onPressed: {
