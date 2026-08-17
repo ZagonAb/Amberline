@@ -4,11 +4,14 @@ FocusScope {
     id: themeRoot
     focus: true
 
+    readonly property string currentVersion: "1.0.1"
     property bool interfaceReady: false
     property bool minSplashTimeElapsed: false
 
     function checkInterfaceReady() {
-        console.log("[theme][DEBUG] checkInterfaceReady t=" + Date.now() + " restoreComplete=" + gameView.restoreComplete + " gridOrientationResolved=" + gameView.gridOrientationResolved);
+        console.log("[theme][DEBUG] checkInterfaceReady t=" + Date.now() +
+        " restoreComplete=" + gameView.restoreComplete +
+        " gridOrientationResolved=" + gameView.gridOrientationResolved);
         if (interfaceReady) return;
         if (gameView.restoreComplete && gameView.gridOrientationResolved) {
             interfaceReady = true;
@@ -22,6 +25,80 @@ FocusScope {
         function onGridOrientationResolvedChanged() { themeRoot.checkInterfaceReady(); }
     }
 
+    function isNewerVersion(latest, current) {
+        console.log("[theme][isNewerVersion] Comparando:", latest, "vs", current);
+        var a = latest.split('.').map(Number);
+        var b = current.split('.').map(Number);
+        for (var i = 0; i < 3; i++) {
+            if ((a[i] || 0) > (b[i] || 0)) {
+                console.log("[theme][isNewerVersion] true en posición", i);
+                return true;
+            }
+            if ((a[i] || 0) < (b[i] || 0)) {
+                console.log("[theme][isNewerVersion] false en posición", i);
+                return false;
+            }
+        }
+        console.log("[theme][isNewerVersion] false (iguales)");
+        return false;
+    }
+
+    function checkForUpdates() {
+        console.log("[theme][checkForUpdates] Iniciando comprobación...");
+        var xhr = new XMLHttpRequest();
+        var url = "https://api.github.com/repos/ZagonAb/Amberline/releases/latest";
+        console.log("[theme][checkForUpdates] URL:", url);
+        xhr.open("GET", url, true);
+        xhr.onreadystatechange = function() {
+            console.log("[theme][checkForUpdates] readyState:", xhr.readyState);
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                console.log("[theme][checkForUpdates] DONE - status:", xhr.status);
+                console.log("[theme][checkForUpdates] responseText (primeros 200 chars):",
+                            xhr.responseText ? xhr.responseText.substring(0, 200) : "(vacío)");
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        console.log("[theme][checkForUpdates] JSON parseado correctamente");
+                        var latestTag = data.tag_name || "";
+                        var latestVersion = latestTag.replace(/^v/, "");
+                        var releaseUrl = data.html_url || "";
+                        var releaseNotes = data.body || "";
+                        console.log("[theme][checkForUpdates] latestTag:", latestTag,
+                                    "latestVersion:", latestVersion,
+                                    "releaseUrl:", releaseUrl);
+                        if (latestVersion && isNewerVersion(latestVersion, currentVersion)) {
+                            console.log("[theme][checkForUpdates] Versión más nueva detectada!");
+                            var lastNotified = api.memory.has('lastUpdateNotified')
+                            ? api.memory.get('lastUpdateNotified')
+                            : "";
+                            console.log("[theme][checkForUpdates] lastNotified:", lastNotified);
+                            if (latestVersion !== lastNotified) {
+                                console.log("[theme][checkForUpdates] Mostrando notificación para versión:", latestVersion);
+                                updateNotification.show(latestVersion, releaseUrl, releaseNotes);
+                                api.memory.set('lastUpdateNotified', latestVersion);
+                            } else {
+                                console.log("[theme][checkForUpdates] Ya notificado para esta versión, omitiendo");
+                            }
+                        } else {
+                            console.log("[theme][checkForUpdates] No es más nueva o no hay versión");
+                        }
+                    } catch (e) {
+                        console.warn("[theme][checkForUpdates] Error parsing JSON:", e);
+                        console.warn("[theme][checkForUpdates] responseText completo:", xhr.responseText);
+                    }
+                } else {
+                    console.log("[theme][checkForUpdates] Error HTTP:", xhr.status, xhr.statusText);
+                    if (xhr.responseText) console.log("[theme][checkForUpdates] response:", xhr.responseText);
+                }
+            }
+        };
+        xhr.onerror = function(e) {
+            console.error("[theme][checkForUpdates] Error de red:", e);
+        };
+        xhr.send();
+        console.log("[theme][checkForUpdates] Solicitud enviada.");
+    }
+
     Rectangle {
         anchors.fill: parent
         color: Style.colorBackground
@@ -30,6 +107,13 @@ FocusScope {
     GameView {
         id: gameView
         anchors.fill: parent
+        enabled: !updateNotification.visible
+    }
+
+    UpdateNotification {
+        id: updateNotification
+        anchors.fill: parent
+        visible: false
     }
 
     onWidthChanged: {
@@ -42,20 +126,32 @@ FocusScope {
     }
 
     Component.onCompleted: {
-        console.log("[theme][DEBUG] Component.onCompleted t=" + Date.now() + " width=" + width + " height=" + height);
+        console.log("[theme][DEBUG] Component.onCompleted t=" + Date.now() +
+        " width=" + width + " height=" + height);
         Style.updateScale(width, height);
 
         var savedTheme = api.memory.has('selectedTheme')
-            ? api.memory.get('selectedTheme')
-            : Style.defaultThemeName;
+        ? api.memory.get('selectedTheme')
+        : Style.defaultThemeName;
         console.log("[theme] Restaurando tema de color: " + savedTheme);
         Style.applyTheme(savedTheme);
 
-        var kind = api.memory.has('collectionKind') ? api.memory.get('collectionKind') : "lastplayed";
-        var name = api.memory.has('collectionName') ? api.memory.get('collectionName') : "Last Played";
-        var title = api.memory.has('gameTitle') ? api.memory.get('gameTitle') : "";
+        var kind = api.memory.has('collectionKind')
+        ? api.memory.get('collectionKind')
+        : "lastplayed";
+        var name = api.memory.has('collectionName')
+        ? api.memory.get('collectionName')
+        : "Last Played";
+        var title = api.memory.has('gameTitle')
+        ? api.memory.get('gameTitle')
+        : "";
         console.log("[theme] Cargando: kind=" + kind + ", name=" + name + ", title=" + title);
         gameView.restoreState(kind, name, title);
+
+        Qt.callLater(function() {
+            console.log("[theme] Ejecutando checkForUpdates después de inicio");
+            checkForUpdates();
+        });
     }
 
     Component.onDestruction: {
@@ -64,7 +160,8 @@ FocusScope {
             var kind = entry ? entry.kind : "lastplayed";
             var name = entry ? entry.label : "Last Played";
             var title = gameView.currentGame ? gameView.currentGame.title : "";
-            console.log("[theme] Guardando al destruir: kind=" + kind + ", name=" + name + ", title=" + title);
+            console.log("[theme] Guardando al destruir: kind=" + kind +
+            ", name=" + name + ", title=" + title);
             api.memory.set('collectionKind', kind);
             api.memory.set('collectionName', name);
             api.memory.set('gameTitle', title);
@@ -88,7 +185,12 @@ FocusScope {
         onSplashHiddenChanged: {
             console.log("[theme][DEBUG] splashHidden=" + splashHidden + " t=" + Date.now());
             if (splashHidden) {
-                gameView.focusGames();
+                if (updateNotification.visible) {
+                    console.log("[theme][DEBUG] updateNotification visible, se omite foco al grid");
+                    updateNotification.forceActiveFocus();
+                } else {
+                    gameView.focusGames();
+                }
             }
         }
 
@@ -162,4 +264,3 @@ FocusScope {
         }
     }
 }
-
