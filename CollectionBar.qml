@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtGraphicalEffects 1.15
 
 Item {
     id: root
@@ -7,10 +8,17 @@ Item {
     readonly property var currentEntry: getEntryAt(currentIndex)
     readonly property int itemWidth: Math.round(150 * Style.scale)
     readonly property int itemHeight: Math.round(34 * Style.scale)
+    readonly property int edgeFadeWidth: Math.round(44 * Style.scale)
+    readonly property real edgeFadeFraction: listView.width > 0
+        ? Math.min(0.45, edgeFadeWidth / listView.width)
+        : 0
+    readonly property bool listOverflowing: listView.contentWidth > listView.width + 1
+    readonly property bool leftFadeActive: listOverflowing && !listView.atXBeginning
+    readonly property bool rightFadeActive: listOverflowing && !listView.atXEnd
+    readonly property bool anyFadeActive: leftFadeActive || rightFadeActive
 
     signal collectionSelected(var entry)
-    signal ready()   // Nueva señal: modelo listo
-
+    signal ready()
     height: itemHeight
 
     function next() { listView.incrementCurrentIndex(); Qt.callLater(ensureCurrentVisible); }
@@ -48,7 +56,6 @@ Item {
         return -1;
     }
 
-    // Obtener entrada por índice
     function getEntryAt(index) {
         if (index < 0 || index >= entries.count) return null;
         var item = entries.get(index);
@@ -109,6 +116,7 @@ Item {
         spacing: Style.spacingSmall
         highlightMoveDuration: Style.animationFast
         model: entries
+        visible: !root.anyFadeActive
 
         onCurrentIndexChanged: {
             console.log("[CollectionBar] currentIndex cambió a:", currentIndex);
@@ -126,6 +134,9 @@ Item {
             width: itemWidth
             height: itemHeight
             isCurrent: ListView.isCurrentItem
+
+            transformOrigin: index === 0 ? Item.Left
+                : (index === entries.count - 1 ? Item.Right : Item.Center)
 
             property var entryData: ({ kind: model.kind, collectionIndex: model.collectionIndex, label: model.label })
 
@@ -227,5 +238,27 @@ Item {
                 }
             }
         }
+    }
+
+    LinearGradient {
+        id: edgeFadeMask
+        visible: false
+        anchors.fill: listView
+        start: Qt.point(0, 0)
+        end: Qt.point(width, 0)
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: root.leftFadeActive ? "#00FFFFFF" : "#FFFFFFFF" }
+            GradientStop { position: root.edgeFadeFraction; color: "#FFFFFFFF" }
+            GradientStop { position: 1.0 - root.edgeFadeFraction; color: "#FFFFFFFF" }
+            GradientStop { position: 1.0; color: root.rightFadeActive ? "#00FFFFFF" : "#FFFFFFFF" }
+        }
+    }
+
+    OpacityMask {
+        anchors.fill: listView
+        source: listView
+        maskSource: edgeFadeMask
+        visible: root.anyFadeActive
+        cached: true
     }
 }
