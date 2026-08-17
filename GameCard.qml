@@ -13,6 +13,14 @@ FocusableItem {
             return collection ? collection.shortName : ""
     }
 
+    Rectangle {
+        id: cardBackground
+        anchors.fill: parent
+        anchors.margins: Style.spacingSmall
+        radius: Style.radiusPanel
+        color: Style.colorPanel
+    }
+
     Image {
         id: art
         anchors.fill: parent
@@ -32,7 +40,7 @@ FocusableItem {
         id: systemArtContainer
         anchors.fill: parent
         anchors.margins: Style.spacingSmall
-        visible: !art.visible && systemArt.source !== "" && systemArt.status === Image.Ready
+        visible: !art.visible && systemArt.source !== ""
 
         Image {
             id: systemArt
@@ -43,7 +51,8 @@ FocusableItem {
                 return shortName !== "" ? "assets/images/systems/" + shortName + ".png" : "";
             }
             fillMode: Image.PreserveAspectFit
-            asynchronous: true
+            asynchronous: false
+            cache: true
             smooth: true
             visible: false
         }
