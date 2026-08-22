@@ -22,10 +22,17 @@ FocusScope {
         expanded = false;
         visible = true;
         opacity = 1;
-        SoundsEffects.playNotice();
+        noticeTimer.restart();
         notification.forceActiveFocus();
         viewButton.forceActiveFocus();
         console.log("[UpdateNotification] Foco forzado a viewButton");
+    }
+
+    Timer {
+        id: noticeTimer
+        interval: 220
+        repeat: false
+        onTriggered: SoundsEffects.playNotice()
     }
 
     function hide() {
@@ -134,11 +141,16 @@ FocusScope {
                         console.log("[UpdateNotification] viewButton Keys.onPressed key=" + event.key);
                         if (api.keys.isAccept(event)) {
                             event.accepted = true;
+                            SoundsEffects.playAccept();
                             console.log("[UpdateNotification] Toggle expanded a " + !notification.expanded);
                             notification.expanded = !notification.expanded;
-                        }
-                        if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
+                        } else if (api.keys.isCancel(event)) {
                             event.accepted = true;
+                            SoundsEffects.playCancel();
+                            notification.hide();
+                        } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
+                            event.accepted = true;
+                            SoundsEffects.playDown();
                             openButton.forceActiveFocus();
                         }
                     }
@@ -182,18 +194,23 @@ FocusScope {
                         console.log("[UpdateNotification] openButton Keys.onPressed key=" + event.key);
                         if (api.keys.isAccept(event)) {
                             event.accepted = true;
+                            SoundsEffects.playAccept();
                             if (notification.releaseUrl) {
                                 console.log("[UpdateNotification] Abriendo URL (teclado):", notification.releaseUrl);
                                 Qt.openUrlExternally(notification.releaseUrl);
                             }
                             notification.hide();
-                        }
-
-                        if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
+                        } else if (api.keys.isCancel(event)) {
                             event.accepted = true;
+                            SoundsEffects.playCancel();
+                            notification.hide();
+                        } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
+                            event.accepted = true;
+                            SoundsEffects.playUp();
                             viewButton.forceActiveFocus();
                         } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
                             event.accepted = true;
+                            SoundsEffects.playDown();
                             closeButton.forceActiveFocus();
                         }
                     }
@@ -233,11 +250,11 @@ FocusScope {
                         console.log("[UpdateNotification] closeButton Keys.onPressed key=" + event.key);
                         if (api.keys.isAccept(event) || api.keys.isCancel(event)) {
                             event.accepted = true;
+                            SoundsEffects.playCancel();
                             notification.hide();
-                        }
-
-                        if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
+                        } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
                             event.accepted = true;
+                            SoundsEffects.playUp();
                             openButton.forceActiveFocus();
                         }
                     }
@@ -261,6 +278,7 @@ FocusScope {
         console.log("[UpdateNotification] Keys.onPressed (FocusScope) key=" + event.key);
         if (api.keys.isCancel(event)) {
             event.accepted = true;
+            SoundsEffects.playCancel();
             console.log("[UpdateNotification] Cancel presionado, ocultando");
             hide();
         }

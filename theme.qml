@@ -8,6 +8,10 @@ FocusScope {
     property bool interfaceReady: false
     property bool minSplashTimeElapsed: false
 
+    property string _pendingVersion: ""
+    property string _pendingUrl: ""
+    property string _pendingNotes: ""
+
     function checkInterfaceReady() {
         console.log("[theme][DEBUG] checkInterfaceReady t=" + Date.now() +
         " restoreComplete=" + gameView.restoreComplete +
@@ -73,9 +77,14 @@ FocusScope {
                             : "";
                             console.log("[theme][checkForUpdates] lastNotified:", lastNotified);
                             if (latestVersion !== lastNotified) {
-                                console.log("[theme][checkForUpdates] Mostrando notificación para versión:", latestVersion);
-                                updateNotification.show(latestVersion, releaseUrl, releaseNotes);
+                                console.log("[theme][checkForUpdates] Guardando notificación pendiente para versión:", latestVersion);
+                                themeRoot._pendingVersion = latestVersion;
+                                themeRoot._pendingUrl = releaseUrl;
+                                themeRoot._pendingNotes = releaseNotes;
                                 api.memory.set('lastUpdateNotified', latestVersion);
+                                if (splashOverlay.splashHidden) {
+                                    postSplashNotifTimer.restart();
+                                }
                             } else {
                                 console.log("[theme][checkForUpdates] Ya notificado para esta versión, omitiendo");
                             }
@@ -184,9 +193,8 @@ FocusScope {
         onSplashHiddenChanged: {
             console.log("[theme][DEBUG] splashHidden=" + splashHidden + " t=" + Date.now());
             if (splashHidden) {
-                if (updateNotification.visible) {
-                    console.log("[theme][DEBUG] updateNotification visible, se omite foco al grid");
-                    updateNotification.forceActiveFocus();
+                if (themeRoot._pendingVersion !== "") {
+                    postSplashNotifTimer.restart();
                 } else {
                     gameView.focusGames();
                 }
@@ -198,6 +206,21 @@ FocusScope {
             running: true
             repeat: false
             onTriggered: themeRoot.minSplashTimeElapsed = true
+        }
+
+        Timer {
+            id: postSplashNotifTimer
+            interval: 800
+            repeat: false
+            onTriggered: {
+                if (themeRoot._pendingVersion !== "") {
+                    console.log("[theme] Mostrando notificación post-splash para versión:", themeRoot._pendingVersion);
+                    updateNotification.show(themeRoot._pendingVersion, themeRoot._pendingUrl, themeRoot._pendingNotes);
+                    themeRoot._pendingVersion = "";
+                    themeRoot._pendingUrl = "";
+                    themeRoot._pendingNotes = "";
+                }
+            }
         }
 
         Behavior on opacity {
