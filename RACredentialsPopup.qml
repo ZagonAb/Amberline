@@ -172,6 +172,7 @@ FocusScope {
     Keys.onPressed: function(event) {
         if (api.keys.isCancel(event) && root._testState !== "testing") {
             event.accepted = true
+            SoundsEffects.playCancel()
             root.close()
         }
     }
@@ -250,11 +251,19 @@ FocusScope {
                     }
                     if (api.keys.isCancel(event)) {
                         event.accepted = true
+                        SoundsEffects.playCancel()
                         root.close()
                         return
                     }
+                    if (root._activeField === "user" && !event.isAutoRepeat) {
+                        if (event.key === Qt.Key_Right) {
+                            SoundsEffects.playUp()
+                        } else if (event.key === Qt.Key_Left) {
+                            SoundsEffects.playDown()
+                        }
+                    }
                 }
-                Keys.onDownPressed: { event.accepted = true; _keyFieldScope.forceActiveFocus() }
+                Keys.onDownPressed: { event.accepted = true; SoundsEffects.playDown(); _keyFieldScope.forceActiveFocus() }
                 Keys.onTabPressed: {
                     event.accepted = true
                     if (root._testState === "testing") return
@@ -363,12 +372,20 @@ FocusScope {
                     }
                     if (api.keys.isCancel(event)) {
                         event.accepted = true
+                        SoundsEffects.playCancel()
                         root.close()
                         return
                     }
+                    if (root._activeField === "key" && !event.isAutoRepeat) {
+                        if (event.key === Qt.Key_Right) {
+                            SoundsEffects.playUp()
+                        } else if (event.key === Qt.Key_Left) {
+                            SoundsEffects.playDown()
+                        }
+                    }
                 }
-                Keys.onUpPressed: { event.accepted = true; _userFieldScope.forceActiveFocus() }
-                Keys.onDownPressed: { event.accepted = true; _okBtn.forceActiveFocus() }
+                Keys.onUpPressed: { event.accepted = true; SoundsEffects.playUp(); _userFieldScope.forceActiveFocus() }
+                Keys.onDownPressed: { event.accepted = true; SoundsEffects.playDown(); _okBtn.forceActiveFocus() }
                 Keys.onTabPressed: {
                     event.accepted = true
                     if (root._testState === "testing") return
@@ -562,26 +579,28 @@ FocusScope {
                         Behavior on color { ColorAnimation { duration: 150 } }
                     }
 
-                    Keys.onUpPressed: { event.accepted = true; _keyFieldScope.forceActiveFocus() }
-                    Keys.onRightPressed: { event.accepted = true; _cancelBtn.forceActiveFocus() }
+                    Keys.onUpPressed: { event.accepted = true; SoundsEffects.playUp(); _keyFieldScope.forceActiveFocus() }
+                    Keys.onRightPressed: { event.accepted = true; SoundsEffects.playDown(); _cancelBtn.forceActiveFocus() }
                     Keys.onTabPressed: {
                         event.accepted = true
                         if (root._testState === "testing") return
+                        SoundsEffects.playDown()
                         _cancelBtn.forceActiveFocus()
                     }
                     Keys.onBacktabPressed: {
                         event.accepted = true
                         if (root._testState === "testing") return
+                        SoundsEffects.playUp()
                         root._activateField("key")
                     }
                     Keys.onPressed: {
                         if (_okBtn._busy) { event.accepted = true; return }
-                        if (api.keys.isCancel(event)) { event.accepted = true; root.close(); return }
+                        if (api.keys.isCancel(event)) { event.accepted = true; SoundsEffects.playCancel(); root.close(); return }
                         if (!event.isAutoRepeat && api.keys.isAccept(event)) {
-                            event.accepted = true; root._save(); return
+                            event.accepted = true; SoundsEffects.playAccept(); root._save(); return
                         }
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            event.accepted = true; root._save()
+                            event.accepted = true; SoundsEffects.playAccept(); root._save()
                         }
                     }
                     MouseArea {
@@ -611,23 +630,25 @@ FocusScope {
                         Behavior on color { ColorAnimation { duration: 150 } }
                     }
 
-                    Keys.onUpPressed: { event.accepted = true; _keyFieldScope.forceActiveFocus() }
-                    Keys.onLeftPressed: { event.accepted = true; _okBtn.forceActiveFocus() }
+                    Keys.onUpPressed: { event.accepted = true; SoundsEffects.playUp(); _keyFieldScope.forceActiveFocus() }
+                    Keys.onLeftPressed: { event.accepted = true; SoundsEffects.playUp(); _okBtn.forceActiveFocus() }
                     Keys.onTabPressed: {
                         event.accepted = true
                         if (root._testState === "testing") return
+                        SoundsEffects.playDown()
                         root._activateField("user")
                     }
                     Keys.onBacktabPressed: {
                         event.accepted = true
                         if (root._testState === "testing") return
+                        SoundsEffects.playUp()
                         _okBtn.forceActiveFocus()
                     }
                     Keys.onPressed: {
                         if (root._testState === "testing") { event.accepted = true; return }
                         if (api.keys.isCancel(event) || api.keys.isAccept(event)
                             || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            event.accepted = true; root.close()
+                            event.accepted = true; SoundsEffects.playCancel(); root.close()
                             }
                     }
                     MouseArea {

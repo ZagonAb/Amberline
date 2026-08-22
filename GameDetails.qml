@@ -107,6 +107,7 @@ Rectangle {
         if (raLoader.active) {
             _closeRAPanel()
         } else {
+            SoundsEffects.playAccept()
             raLoader.sourceComponent = _raHasCredentials() ? _raInfoComponent : _raCredentialsComponent
             raLoader.opacity = 0
             raLoader.active = true
@@ -115,6 +116,7 @@ Rectangle {
     }
 
     function _closeRAPanel() {
+        SoundsEffects.playCancel()
         if (raLoader.item && raLoader.item.hasOwnProperty("isOpen")) {
             raCloseDelay.start()
         } else {

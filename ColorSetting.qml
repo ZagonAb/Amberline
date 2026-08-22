@@ -155,32 +155,50 @@ Item {
         }
     }
 
+    function _moveLeft() {
+        if (colorSetting.highlightIndex === 0) {
+            SoundsEffects.playCancel();
+        } else {
+            colorSetting.highlightIndex = colorSetting.highlightIndex - 1;
+            SoundsEffects.playDown();
+        }
+    }
+
+    function _moveRight() {
+        if (colorSetting.highlightIndex === colorSetting.themes.length - 1) {
+            SoundsEffects.playCancel();
+        } else {
+            colorSetting.highlightIndex = colorSetting.highlightIndex + 1;
+            SoundsEffects.playUp();
+        }
+    }
+
     Keys.onPressed: function(event) {
-        if ((api.keys.isCancel(event) || api.keys.isAccept(event)) && !event.isAutoRepeat) {
+        if (api.keys.isAccept(event) && !event.isAutoRepeat) {
             event.accepted = true;
+            SoundsEffects.playAccept();
+            colorSetting.closeMenu();
+
+        } else if (api.keys.isCancel(event) && !event.isAutoRepeat) {
+            event.accepted = true;
+            SoundsEffects.playCancel();
             colorSetting.closeMenu();
 
         } else if (event.key === Qt.Key_Left && !event.isAutoRepeat) {
             event.accepted = true;
-            colorSetting.highlightIndex = Math.max(0, colorSetting.highlightIndex - 1);
+            colorSetting._moveLeft();
 
         } else if (event.key === Qt.Key_Right && !event.isAutoRepeat) {
             event.accepted = true;
-            colorSetting.highlightIndex = Math.min(
-                colorSetting.themes.length - 1,
-                colorSetting.highlightIndex + 1
-            );
+            colorSetting._moveRight();
 
         } else if (api.keys.isPrevPage(event) && !event.isAutoRepeat) {
             event.accepted = true;
-            colorSetting.highlightIndex = Math.max(0, colorSetting.highlightIndex - 1);
+            colorSetting._moveLeft();
 
         } else if (api.keys.isNextPage(event) && !event.isAutoRepeat) {
             event.accepted = true;
-            colorSetting.highlightIndex = Math.min(
-                colorSetting.themes.length - 1,
-                colorSetting.highlightIndex + 1
-            );
+            colorSetting._moveRight();
         }
     }
 }

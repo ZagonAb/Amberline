@@ -702,27 +702,16 @@ FocusScope {
         border.color: Style.colorBorder
     }
 
+    on_LogoutPopupVisibleChanged: {
+        if (_logoutPopupVisible) SoundsEffects.playDown()
+    }
+
     Keys.onPressed: function(event) {
         console.log("[RA] Keys.onPressed (root) event.key=" + event.key + " isDetails=" + api.keys.isDetails(event) + " isAutoRepeat=" + event.isAutoRepeat + " _hasCredentials=" + _hasCredentials + " _errorMsg='" + _errorMsg + "' _logoutPopupVisible=" + _logoutPopupVisible)
 
         if (_logoutPopupVisible) {
             event.accepted = true
             return
-        }
-
-        if (!event.isAutoRepeat && api.keys.isFilters(event)) {
-            event.accepted = true
-            if (soundManager) soundManager.playNav();
-            root.load()
-            return
-        }
-
-        if (!event.isAutoRepeat && api.keys.isDetails(event) && _hasCredentials && _errorMsg === "") {
-            event.accepted = true
-            console.log("[RA] Abriendo popup de cierre de sesión")
-            _logoutPopupVisible = true
-            _logoutPopup.forceActiveFocus()
-            _cancelBtn.forceActiveFocus()
         }
     }
 
@@ -777,11 +766,11 @@ FocusScope {
                     Keys.onPressed: function(event) {
                         if (!event.isAutoRepeat && api.keys.isAccept(event)) {
                             event.accepted = true
-                            if (soundManager) soundManager.playNav();
+                            SoundsEffects.playAccept()
                             root.load()
                         } else if (api.keys.isCancel(event)) {
                             event.accepted = true
-                            if (soundManager) soundManager.playBack();
+                            SoundsEffects.playCancel()
                             root.closeRequested()
                         }
                     }
@@ -1097,19 +1086,77 @@ FocusScope {
 
                 Keys.forwardTo: [root]
 
+                property string _pendingNavSound: ""
+                readonly property int _cols: cellWidth > 0 ? Math.max(1, Math.floor(width / cellWidth)) : 1
+
                 Keys.onPressed: function(event) {
                     console.log("[RA] _achGrid Keys.onPressed event.key=" + event.key + " isDetails=" + api.keys.isDetails(event) + " isCancel=" + api.keys.isCancel(event))
 
-                    if (api.keys.isCancel(event)) {
+                    if (api.keys.isCancel(event) && !event.isAutoRepeat) {
                         event.accepted = true
-                        if (soundManager) soundManager.playBack();
+                        SoundsEffects.playCancel()
                         root.closeRequested()
                         return
                     }
-                    if (event.key === Qt.Key_Left || event.key === Qt.Key_Right ||
-                        event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
-                        if (soundManager) soundManager.playNav();
+
+                    if (!event.isAutoRepeat && api.keys.isFilters(event)) {
+                        event.accepted = true
+                        SoundsEffects.playUp()
+                        root.load()
+                        return
+                    }
+
+                    if (!event.isAutoRepeat && api.keys.isDetails(event) && root._hasCredentials && root._errorMsg === "") {
+                        event.accepted = true
+                        root._logoutPopupVisible = true
+                        _logoutPopup.forceActiveFocus()
+                        _cancelBtn.forceActiveFocus()
+                        return
+                    }
+
+                    var idx   = _achGrid.currentIndex
+                    var total = _achGrid.model
+                    var cols  = _achGrid._cols
+
+                    if (event.key === Qt.Key_Left) {
+                        if (idx % cols === 0) {
+                            SoundsEffects.playCancel()
+                        } else {
+                            _achGrid._pendingNavSound = "down"
                         }
+                    } else if (event.key === Qt.Key_Right) {
+                        var isLastInRow = (idx % cols === cols - 1)
+                        var isLastItem  = (idx === total - 1)
+                        if (isLastInRow || isLastItem) {
+                            SoundsEffects.playCancel()
+                        } else {
+                            _achGrid._pendingNavSound = "up"
+                        }
+                    } else if (event.key === Qt.Key_Up) {
+                        if (idx < cols) {
+                            SoundsEffects.playCancel()
+                        } else {
+                            _achGrid._pendingNavSound = "up"
+                        }
+                    } else if (event.key === Qt.Key_Down) {
+                        var lastRowStart = total - (total % cols === 0 ? cols : total % cols)
+                        if (idx >= lastRowStart) {
+                            SoundsEffects.playCancel()
+                        } else {
+                            _achGrid._pendingNavSound = "down"
+                        }
+                    }
+                }
+
+                onCurrentIndexChanged: {
+                    if (_achGrid._pendingNavSound !== "") {
+                        if (_achGrid._pendingNavSound === "up") {
+                            SoundsEffects.playUp();
+                        } else {
+                            SoundsEffects.playDown();
+                        }
+                        _achGrid._pendingNavSound = "";
+                    }
                 }
 
                 delegate: Item {
@@ -1254,12 +1301,17 @@ FocusScope {
                                 Keys.onPressed: function(event) {
                                     if (api.keys.isAccept(event) && !event.isAutoRepeat) {
                                         event.accepted = true
+                                        SoundsEffects.playAccept()
                                         console.log("[RA] Logging out: unsetting credentials")
                                         api.memory.unset("ra_api_key")
                                         api.memory.unset("ra_api_user")
                                         root._logoutPopupVisible = false
                                         root.load()
                                         root.openCredentialsRequested()
+                                    } else if ((event.key === Qt.Key_Right || event.key === Qt.Key_Left) && !event.isAutoRepeat) {
+                                        event.accepted = true
+                                        SoundsEffects.playUp()
+                                        _cancelBtn.forceActiveFocus()
                                     }
                                 }
                             }
@@ -1290,12 +1342,18 @@ FocusScope {
                                 Keys.onPressed: function(event) {
                                     if (api.keys.isAccept(event) && !event.isAutoRepeat) {
                                         event.accepted = true
+                                        SoundsEffects.playCancel()
                                         root._logoutPopupVisible = false
                                         _achGrid.forceActiveFocus()
                                     } else if (api.keys.isCancel(event) && !event.isAutoRepeat) {
                                         event.accepted = true
+                                        SoundsEffects.playCancel()
                                         root._logoutPopupVisible = false
                                         _achGrid.forceActiveFocus()
+                                    } else if ((event.key === Qt.Key_Right || event.key === Qt.Key_Left) && !event.isAutoRepeat) {
+                                        event.accepted = true
+                                        SoundsEffects.playDown()
+                                        _okBtn.forceActiveFocus()
                                     }
                                 }
                             }
@@ -1304,22 +1362,9 @@ FocusScope {
                 }
 
                 Keys.onPressed: function(event) {
-                    if (event.key === Qt.Key_Left) {
+                    if (api.keys.isCancel(event) && !event.isAutoRepeat) {
                         event.accepted = true
-                        if (_cancelBtn.activeFocus) {
-                            _okBtn.forceActiveFocus()
-                        } else if (_okBtn.activeFocus) {
-                            _cancelBtn.forceActiveFocus()
-                        }
-                    } else if (event.key === Qt.Key_Right) {
-                        event.accepted = true
-                        if (_okBtn.activeFocus) {
-                            _cancelBtn.forceActiveFocus()
-                        } else if (_cancelBtn.activeFocus) {
-                            _okBtn.forceActiveFocus()
-                        }
-                    } else if (api.keys.isCancel(event)) {
-                        event.accepted = true
+                        SoundsEffects.playCancel()
                         root._logoutPopupVisible = false
                         _achGrid.forceActiveFocus()
                     }

@@ -1,2 +1,3 @@
 singleton Style Style.qml
 singleton Fonts Fonts.qml
+singleton SoundsEffects SoundsEffects.qml

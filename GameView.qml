@@ -138,12 +138,17 @@ FocusScope {
         if (api.keys.isNextPage(event)) {
             event.accepted = true;
             if (!gameDetails.raPanelOpen) {
-                collectionBar.next();
+                if (collectionBar.currentIndex === collectionBar.count - 1) {
+                    SoundsEffects.playCancel();
+                } else {
+                    collectionBar.next();
+                }
             }
         } else if (api.keys.isPrevPage(event)) {
             event.accepted = true;
             if (!gameDetails.raPanelOpen) {
                 if (collectionBar.currentIndex === 0) {
+                    SoundsEffects.playDown();
                     openColorSetting();
                 } else {
                     collectionBar.prev();

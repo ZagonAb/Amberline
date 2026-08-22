@@ -22,6 +22,7 @@ FocusScope {
         expanded = false;
         visible = true;
         opacity = 1;
+        SoundsEffects.playNotice();
         notification.forceActiveFocus();
         viewButton.forceActiveFocus();
         console.log("[UpdateNotification] Foco forzado a viewButton");

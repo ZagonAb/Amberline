@@ -202,6 +202,15 @@ FocusScope {
                     font.pixelSize: Style.fontSizeTitle
                     clip: true
 
+                    property int _prevLength: 0
+
+                    onTextChanged: {
+                        if (text.length > _prevLength) {
+                            SoundsEffects.playAccept();
+                        }
+                        _prevLength = text.length;
+                    }
+
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "Search by title, dev, pub, year, genre..."
@@ -214,22 +223,33 @@ FocusScope {
                     Keys.onPressed: function(event) {
                         if (!event.isAutoRepeat && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || api.keys.isAccept(event))) {
                             event.accepted = true;
+                            SoundsEffects.playAccept();
                             root.executeSearch();
                         } else if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) {
                             if (searchInput.text.length > 0) {
+                                SoundsEffects.playCancel();
                                 event.accepted = false;
                             } else if (!event.isAutoRepeat && api.keys.isCancel(event)) {
                                 event.accepted = true;
+                                SoundsEffects.playCancel();
                                 root.closeRequested();
                             } else {
                                 event.accepted = false;
                             }
                         } else if (!event.isAutoRepeat && api.keys.isCancel(event)) {
                             event.accepted = true;
+                            SoundsEffects.playCancel();
                             root.closeRequested();
                         } else if (!event.isAutoRepeat && event.key === Qt.Key_Down && root.resultsList.length > 0) {
                             event.accepted = true;
+                            SoundsEffects.playDown();
                             resultsView.forceActiveFocus();
+                        } else if (!event.isAutoRepeat && event.key === Qt.Key_Right) {
+                            SoundsEffects.playUp();
+                            event.accepted = false;
+                        } else if (!event.isAutoRepeat && event.key === Qt.Key_Left) {
+                            SoundsEffects.playDown();
+                            event.accepted = false;
                         } else {
                             event.accepted = false;
                         }
@@ -276,9 +296,16 @@ FocusScope {
                 preferredHighlightBegin: Math.round(resultsView.height * 0.15)
                 preferredHighlightEnd: Math.round(resultsView.height * 0.85)
 
+                property string _pendingNavSound: ""
+
                 onCurrentIndexChanged: {
                     if (currentIndex >= 0)
                         positionViewAtIndex(currentIndex, ListView.Contain)
+                    if (_pendingNavSound !== "") {
+                        if (_pendingNavSound === "up") SoundsEffects.playUp();
+                        else SoundsEffects.playDown();
+                        _pendingNavSound = "";
+                    }
                 }
 
                 delegate: Rectangle {
@@ -355,14 +382,24 @@ FocusScope {
 
                     if (api.keys.isAccept(event)) {
                         event.accepted = true;
+                        SoundsEffects.playAccept();
                         var g = root.resultsList[resultsView.currentIndex];
                         if (g) root.launchGame(g);
                     } else if (api.keys.isCancel(event)) {
                         event.accepted = true;
+                        SoundsEffects.playCancel();
                         searchInput.forceActiveFocus();
                     } else if (event.key === Qt.Key_Up && resultsView.currentIndex === 0) {
                         event.accepted = true;
+                        SoundsEffects.playCancel();
                         searchInput.forceActiveFocus();
+                    } else if (event.key === Qt.Key_Up) {
+                        resultsView._pendingNavSound = "up";
+                    } else if (event.key === Qt.Key_Down) {
+                        if (resultsView.currentIndex < root.resultsList.length - 1)
+                            resultsView._pendingNavSound = "down";
+                        else
+                            SoundsEffects.playCancel();
                     }
                 }
             }
@@ -372,6 +409,7 @@ FocusScope {
     Keys.onPressed: function(event) {
         if (!event.isAutoRepeat && api.keys.isCancel(event) && !searchInput.activeFocus && !resultsView.activeFocus) {
             event.accepted = true;
+            SoundsEffects.playCancel();
             root.closeRequested();
         }
     }

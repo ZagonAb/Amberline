@@ -16,6 +16,7 @@ FocusScope {
 
     property bool favoriteConfirmVisible: false
     property int favoriteConfirmFocusIndex: 0
+    property string _pendingNavSound: ""
 
     readonly property bool letterFilterEnabled: sourceEntry
     && sourceEntry.kind !== "favorites"
@@ -78,6 +79,7 @@ FocusScope {
         root.letterScrollCount = root.letterIndex[startLetter].count;
         root.letterScrollActive = true;
         root.jumpToLetter(startLetter);
+        root._playLetterHoldSound();
         letterStepTimer.start();
     }
 
@@ -90,6 +92,15 @@ FocusScope {
         root.letterScrollLetter = letter;
         root.letterScrollCount = root.letterIndex[letter].count;
         root.jumpToLetter(letter);
+        root._playLetterHoldSound();
+    }
+
+    function _playLetterHoldSound() {
+        if (root.letterHoldDirection === 1) {
+            SoundsEffects.playDown();
+        } else {
+            SoundsEffects.playUp();
+        }
     }
 
     function deactivateLetterScroll() {
@@ -265,6 +276,8 @@ FocusScope {
         if (!game) return;
         var idx = gridView.currentIndex;
         game.favorite = !game.favorite;
+        console.log("[GameGrid] toggleCurrentFavorite favorite=" + game.favorite + " -> playFavorite()");
+        SoundsEffects.playFavorite();
         Qt.callLater(function() {
             if (gridView.count === 0) return;
             gridView.currentIndex = Math.min(idx, gridView.count - 1);
@@ -320,6 +333,7 @@ FocusScope {
 
             if (event.key === Qt.Key_Up && !event.isAutoRepeat && Math.floor(currentIndex / columns) === 0) {
                 event.accepted = true;
+                SoundsEffects.playUp();
                 root.searchRequested();
                 return;
             }
@@ -331,6 +345,7 @@ FocusScope {
 
             if (event.key === Qt.Key_Left && currentIndex === 0) {
                 event.accepted = true;
+                SoundsEffects.playDown();
                 currentIndex = count - 1;
                 return;
             }
@@ -340,6 +355,7 @@ FocusScope {
                 var currentRow = Math.floor(currentIndex / columns);
                 if (currentRow === lastRow) {
                     event.accepted = true;
+                    SoundsEffects.playDown();
                     currentIndex = 0;
                     return;
                 }
@@ -347,9 +363,15 @@ FocusScope {
 
             if (event.key === Qt.Key_Right && currentIndex === count - 1) {
                 event.accepted = true;
+                SoundsEffects.playUp();
                 currentIndex = 0;
                 return;
             }
+
+            if (event.key === Qt.Key_Up) root._pendingNavSound = "up";
+            else if (event.key === Qt.Key_Down) root._pendingNavSound = "down";
+            else if (event.key === Qt.Key_Left) root._pendingNavSound = "down";
+            else if (event.key === Qt.Key_Right) root._pendingNavSound = "up";
         }
 
         Keys.onReleased: {
@@ -365,6 +387,14 @@ FocusScope {
 
         onCurrentIndexChanged: {
             console.log("[GameGrid] currentIndex cambió a:", currentIndex);
+            if (root._pendingNavSound !== "") {
+                if (root._pendingNavSound === "up") {
+                    SoundsEffects.playUp();
+                } else {
+                    SoundsEffects.playDown();
+                }
+                root._pendingNavSound = "";
+            }
         }
         onModelChanged: {
             console.log("[GameGrid][DEBUG] gridView.model cambió t=" + Date.now() + " count=" + count + " cellWidth=" + cellWidth.toFixed(1) + " cellHeight=" + cellHeight.toFixed(1));
@@ -448,7 +478,10 @@ FocusScope {
 
         if (!event.isAutoRepeat && api.keys.isAccept(event)) {
             event.accepted = true;
-            if (root.currentGame) root.gameActivated(root.currentGame);
+            if (root.currentGame) {
+                SoundsEffects.playAccept();
+                root.gameActivated(root.currentGame);
+            }
         } else if (api.keys.isDetails(event)) {
             event.accepted = true;
             if (root.sourceEntry && root.sourceEntry.kind === "favorites") {
@@ -458,7 +491,10 @@ FocusScope {
             }
         } else if (api.keys.isFilters(event)) {
             event.accepted = true;
+            SoundsEffects.playUp();
             root.cycleImageRequested();
+        } else if (!event.isAutoRepeat && api.keys.isCancel(event)) {
+            SoundsEffects.playCancel();
         }
     }
 
@@ -475,12 +511,19 @@ FocusScope {
 
             if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
                 root.favoriteConfirmFocusIndex = root.favoriteConfirmFocusIndex === 0 ? 1 : 0;
+                if (event.key === Qt.Key_Right) {
+                    SoundsEffects.playUp();
+                } else {
+                    SoundsEffects.playDown();
+                }
             } else if (api.keys.isCancel(event)) {
+                SoundsEffects.playCancel();
                 root.closeFavoriteConfirm();
             } else if (api.keys.isAccept(event)) {
                 if (root.favoriteConfirmFocusIndex === 1) {
                     root.confirmFavoriteRemoval();
                 } else {
+                    SoundsEffects.playCancel();
                     root.closeFavoriteConfirm();
                 }
             } else if (api.keys.isNextPage(event) || api.keys.isPrevPage(event)) {

@@ -5,6 +5,7 @@ Item {
     id: root
 
     readonly property int currentIndex: listView.currentIndex
+    readonly property int count: listView.count
     readonly property var currentEntry: getEntryAt(currentIndex)
     readonly property int itemWidth: Math.round(150 * Style.scale)
     readonly property int itemHeight: Math.round(34 * Style.scale)
@@ -21,8 +22,22 @@ Item {
     signal ready()
     height: itemHeight
 
-    function next() { listView.incrementCurrentIndex(); Qt.callLater(ensureCurrentVisible); }
-    function prev() { listView.decrementCurrentIndex(); Qt.callLater(ensureCurrentVisible); }
+    function next() {
+        var prevIndex = listView.currentIndex;
+        listView.incrementCurrentIndex();
+        if (listView.currentIndex !== prevIndex) {
+            SoundsEffects.playUp();
+        }
+        Qt.callLater(ensureCurrentVisible);
+    }
+    function prev() {
+        var prevIndex = listView.currentIndex;
+        listView.decrementCurrentIndex();
+        if (listView.currentIndex !== prevIndex) {
+            SoundsEffects.playDown();
+        }
+        Qt.callLater(ensureCurrentVisible);
+    }
 
     function setCurrentIndex(index) {
         if (entries.count === 0) return;
