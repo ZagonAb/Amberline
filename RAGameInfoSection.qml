@@ -95,11 +95,20 @@ FocusScope {
         });
     }
 
+    function _stripTags(str) {
+        if (!str) return "";
+        var t = str.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
+        return t !== "" ? t : str;
+    }
+
     function _normalize(str) {
         if (!str) return "";
-        return _romanToArabic(str.toLowerCase())
+        var s = str.toLowerCase()
+        .replace(/[\u0027\u2018\u2019\u00b4\u0060]/g, "")
+        .replace(/&/g, " and ");
+        return _romanToArabic(s)
         .replace(/\b(the|a|an)\b\s*/g, "")
-        .replace(/[:\-\u2013_',\.\!?®™©\(\)\[\]\/\\]/g, " ")
+        .replace(/[:\-\u2013\u2014_,\.\!\?®™©\(\)\[\]\/\\]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
     }
@@ -109,10 +118,12 @@ FocusScope {
     }
 
     function _matchScore(pegTitle, raTitle) {
-        var pNorm = _normalize(pegTitle);
+        var pNorm = _normalize(_stripTags(pegTitle));
         var rNorm = _normalize(raTitle);
 
         if (pNorm === rNorm) return 2.0;
+
+        if (pNorm.replace(/ /g, "") === rNorm.replace(/ /g, "")) return 1.9;
 
         var pWords = _words(pNorm);
         var rWords = _words(rNorm);
